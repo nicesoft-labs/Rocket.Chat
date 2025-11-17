@@ -93,5 +93,5 @@ export function isInvitedSubscription(sub: ISubscription): boolean {
 }
 
 export function isFederatedInvite(sub: ISubscription): boolean {
-	return sub.invited === true;
+	return sub.invited === true && sub.federation !== undefined;
 }
