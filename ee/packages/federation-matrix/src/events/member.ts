@@ -1,4 +1,4 @@
-import { Room, api } from '@rocket.chat/core-services';
+import { Room } from '@rocket.chat/core-services';
 import type { Emitter } from '@rocket.chat/emitter';
 import type { HomeserverEventSignatures, UserID, RoomID, PduForType, EventID } from '@rocket.chat/federation-sdk';
 import { federationSDK } from '@rocket.chat/federation-sdk';
@@ -169,34 +169,7 @@ async function handleLeave(event: HomeserverEventSignatures['homeserver.matrix.m
 		return;
 	}
 
-	// TODO: move DB calls to models package
-	const subscription = await Subscriptions.findOne({
-		'rid': room._id,
-		'u._id': leavingUser._id,
-	});
-	if (!subscription) {
-		logger.warn(`Leave event for user without subscription: ${userId} in room ${roomId}`);
-		return;
-	}
-
-	const wasInvited = subscription.invited === true;
-	if (wasInvited && room.t === 'd') {
-		const dmSubscriptions = await Subscriptions.findByRoomId(room._id).toArray();
-		// TODO: move DB calls to models package
-		await Subscriptions.deleteMany({ rid: room._id });
-
-		for (const sub of dmSubscriptions) {
-			void api.broadcast('watch.subscriptions', { clientAction: 'removed', subscription: sub });
-		}
-
-		// TODO: move DB calls to models package
-		await Rooms.deleteOne({ _id: room._id });
-	} else {
-		const deletedSubscription = await Subscriptions.removeByRoomIdAndUserId(room._id, leavingUser._id);
-		if (deletedSubscription) {
-			void api.broadcast('watch.subscriptions', { clientAction: 'removed', subscription: deletedSubscription });
-		}
-	}
+	await Room.removeUserFromRoom(room._id, leavingUser);
 }
 
 export function member(emitter: Emitter<HomeserverEventSignatures>) {

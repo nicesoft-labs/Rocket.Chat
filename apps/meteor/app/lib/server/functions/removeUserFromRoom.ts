@@ -45,6 +45,8 @@ export const removeUserFromRoom = async function (rid: string, user: IUser, opti
 
 			if (room.teamMain) {
 				await Message.saveSystemMessage('removed-user-from-team', rid, user.username || '', user, extraData);
+			} else if (subscription.invited) {
+				await Message.saveSystemMessage('uir', rid, removedUser.username || '', removedUser, extraData);
 			} else {
 				await Message.saveSystemMessage('ru', rid, user.username || '', user, extraData);
 			}
