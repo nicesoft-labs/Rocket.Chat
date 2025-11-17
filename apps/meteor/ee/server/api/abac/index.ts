@@ -14,7 +14,6 @@ import {
 	POSTSingleRoomAbacAttributeBodySchema,
 	PUTRoomAbacAttributeValuesBodySchema,
 	POSTAbacUsersSyncBodySchema,
-	POSTAbacUsersSyncResponseSchema,
 	GenericErrorSchema,
 } from './schemas';
 import { API } from '../../../../app/api/server';
