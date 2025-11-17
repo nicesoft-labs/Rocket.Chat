@@ -7,7 +7,7 @@ import {
 	isUserNativeFederated,
 	UserStatus,
 } from '@rocket.chat/core-typings';
-import type { MessageQuoteAttachment, IMessage, IRoom, IUser, IRoomNativeFederated } from '@rocket.chat/core-typings';
+import type { MessageQuoteAttachment, IMessage, IRoom, IUser, IRoomNativeFederated, ISubscription } from '@rocket.chat/core-typings';
 import { eventIdSchema, roomIdSchema, userIdSchema, federationSDK } from '@rocket.chat/federation-sdk';
 import type { EventID, UserID, FileMessageType, PresenceState } from '@rocket.chat/federation-sdk';
 import { Logger } from '@rocket.chat/logger';
@@ -897,5 +897,37 @@ export class FederationMatrix extends ServiceClass implements IFederationMatrixS
 		);
 
 		return results;
+	}
+
+	async handleInvite(subscriptionId: ISubscription['_id'], userId: IUser['_id'], action: 'accept' | 'reject'): Promise<void> {
+		const subscription = await Subscriptions.findOne(
+			{
+				'_id': subscriptionId,
+				'u._id': userId,
+				'invited': true,
+			},
+			{ projection: { _id: 1, rid: 1, federation: 1 } },
+		);
+		if (!subscription) {
+			throw new Error('Subscription not found');
+		}
+		if (!subscription.federation?.inviteEventId) {
+			throw new Error('Invite event ID not found');
+		}
+
+		const user = await Users.findOneById(userId);
+		if (!user) {
+			throw new Error('User not found');
+		}
+
+		// TODO: should use common function to get matrix user ID
+		const matrixUserId = isUserNativeFederated(user) ? user.federation.mui : `@${user.username}:${this.serverName}`;
+
+		if (action === 'accept') {
+			await federationSDK.acceptInvite(subscription.federation?.inviteEventId, matrixUserId);
+		}
+		if (action === 'reject') {
+			await federationSDK.rejectInvite(subscription.federation?.inviteEventId, matrixUserId);
+		}
 	}
 }

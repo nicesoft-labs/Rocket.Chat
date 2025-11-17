@@ -1,4 +1,4 @@
-import { Media, MeteorError, Team } from '@rocket.chat/core-services';
+import { FederationMatrix, Media, MeteorError, Team } from '@rocket.chat/core-services';
 import type { IRoom, IUpload } from '@rocket.chat/core-typings';
 import { isPrivateRoom, isPublicRoom } from '@rocket.chat/core-typings';
 import { Messages, Rooms, Users, Uploads, Subscriptions } from '@rocket.chat/models';
@@ -15,6 +15,7 @@ import {
 	isRoomsMembersOrderedByRoleProps,
 	isRoomsChangeArchivationStateProps,
 	isRoomsHideProps,
+	isRoomsInviteProps,
 } from '@rocket.chat/rest-typings';
 import { Meteor } from 'meteor/meteor';
 
@@ -1074,6 +1075,33 @@ export const roomEndpoints = API.v1.get(
 );
 
 type RoomEndpoints = ExtractRoutesFromAPI<typeof roomEndpoints>;
+
+API.v1.addRoute(
+	'rooms.invite',
+	{ authRequired: true, body: isRoomsInviteProps },
+	{
+		async post() {
+			const { subscriptionId, action } = this.bodyParams;
+
+			if (!subscriptionId) {
+				return API.v1.failure('subscriptionId is required');
+			}
+
+			if (action !== 'accept' && action !== 'reject') {
+				return API.v1.failure('action must be either "accept" or "reject"');
+			}
+
+			try {
+				await FederationMatrix.handleInvite(subscriptionId, this.userId, action);
+				return API.v1.success({
+					message: 'Invite handled',
+				});
+			} catch (error) {
+				return API.v1.failure(`Failed to handle invite: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		},
+	},
+);
 
 declare module '@rocket.chat/rest-typings' {
 	// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-empty-interface
