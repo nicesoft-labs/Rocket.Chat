@@ -1,4 +1,4 @@
-import { type IFederationMatrixService, ServiceClass } from '@rocket.chat/core-services';
+import { type IFederationMatrixService, Message, ServiceClass } from '@rocket.chat/core-services';
 import {
 	isDeletedMessage,
 	isMessageFromMatrixFederation,
@@ -922,12 +922,17 @@ export class FederationMatrix extends ServiceClass implements IFederationMatrixS
 
 		// TODO: should use common function to get matrix user ID
 		const matrixUserId = isUserNativeFederated(user) ? user.federation.mui : `@${user.username}:${this.serverName}`;
+		if (!user.username) {
+			throw new Error('User username not found');
+		}
 
 		if (action === 'accept') {
 			await federationSDK.acceptInvite(subscription.federation?.inviteEventId, matrixUserId);
+			await Message.saveSystemMessage('uj', subscription.rid, user.username, user, { u: { _id: user._id, username: user.username } });
 		}
 		if (action === 'reject') {
 			await federationSDK.rejectInvite(subscription.federation?.inviteEventId, matrixUserId);
+			await Message.saveSystemMessage('uir', subscription.rid, user.username, user, { u: { _id: user._id, username: user.username } });
 		}
 	}
 }

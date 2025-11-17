@@ -121,7 +121,7 @@ export const addUserToRoom = async (
 	}
 
 	if (!skipSystemMessage) {
-		if (inviter) {
+		if (inviter && inviter.username) {
 			const extraData = {
 				ts: now,
 				u: {
@@ -131,6 +131,10 @@ export const addUserToRoom = async (
 			};
 			if (room.teamMain) {
 				await Message.saveSystemMessage('added-user-to-team', rid, userToBeAdded.username, userToBeAdded, extraData);
+			} else if (invited) {
+				await Message.saveSystemMessage('ui', rid, userToBeAdded.username, userToBeAdded, {
+					u: { _id: inviter._id, username: inviter.username },
+				});
 			} else {
 				await Message.saveSystemMessage('au', rid, userToBeAdded.username, userToBeAdded, extraData);
 			}
