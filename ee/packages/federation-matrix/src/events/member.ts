@@ -196,10 +196,6 @@ async function handleLeave(event: HomeserverEventSignatures['homeserver.matrix.m
 		if (deletedSubscription) {
 			void api.broadcast('watch.subscriptions', { clientAction: 'removed', subscription: deletedSubscription });
 		}
-
-		if (!wasInvited && room.t !== 'd') {
-			await Rooms.incUsersCountById(room._id, -1);
-		}
 	}
 }
 
