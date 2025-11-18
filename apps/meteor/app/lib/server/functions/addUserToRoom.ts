@@ -121,7 +121,7 @@ export const addUserToRoom = async (
 	}
 
 	if (!skipSystemMessage) {
-		if (inviter && inviter.username) {
+		if (inviter) {
 			const extraData = {
 				ts: now,
 				u: {
