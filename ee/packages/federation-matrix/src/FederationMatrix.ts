@@ -14,7 +14,6 @@ import { Logger } from '@rocket.chat/logger';
 import { Users, Subscriptions, Messages, Rooms, Settings } from '@rocket.chat/models';
 import emojione from 'emojione';
 
-import { acceptInvite } from './api/_matrix/invite';
 import { toExternalMessageFormat, toExternalQuoteMessageFormat } from './helpers/message.parsers';
 import { MatrixMediaService } from './services/MatrixMediaService';
 
@@ -540,13 +539,18 @@ export class FederationMatrix extends ServiceClass implements IFederationMatrixS
 		}
 	}
 
-	async inviteUsersToRoom(room: IRoomNativeFederated, matrixUsersUsername: string[], inviter: IUser): Promise<void> {
+	async inviteUsersToRoom(
+		room: IRoomNativeFederated,
+		matrixUsersUsername: string[],
+		inviter: IUser,
+	): Promise<{ eventId?: string }> {
 		try {
 			const inviterUserId = `@${inviter.username}:${this.serverName}`;
 
-			await Promise.all(
+			const results = await Promise.all(
 				matrixUsersUsername.map(async (username) => {
-					if (validateFederatedUsername(username)) {
+					const isExternalUser = validateFederatedUsername(username);
+					if (isExternalUser) {
 						return federationSDK.inviteUserToRoom(
 							userIdSchema.parse(username),
 							roomIdSchema.parse(room.federation.mrid),
@@ -558,18 +562,19 @@ export class FederationMatrix extends ServiceClass implements IFederationMatrixS
 					// since we accept from there we can skip accepting here
 					if (isUserNativeFederated(inviter)) {
 						this.logger.debug('Inviter is native federated, skip accept invite');
-						return;
+						return undefined;
 					}
 
-					const result = await federationSDK.inviteUserToRoom(
+					return federationSDK.inviteUserToRoom(
 						userIdSchema.parse(`@${username}:${this.serverName}`),
 						roomIdSchema.parse(room.federation.mrid),
 						userIdSchema.parse(inviterUserId),
 					);
-
-					return acceptInvite(result.event, username);
 				}),
 			);
+
+			const firstResult = results[0];
+			return { eventId: firstResult?.event_id };
 		} catch (error) {
 			this.logger.error({ msg: 'Failed to invite an user to Matrix:', err: error });
 			throw error;
@@ -828,22 +833,24 @@ export class FederationMatrix extends ServiceClass implements IFederationMatrixS
 	}
 
 	async notifyUserTyping(rid: string, user: string, isTyping: boolean) {
-		if (!this.processEDUTyping) {
+		if (!this.processEDUTyping || !user || !rid) {
 			return;
 		}
 
-		if (!rid || !user) {
-			return;
-		}
-		const room = await Rooms.findOneById(rid);
+		const room = await Rooms.findOneById(rid, { projection: { _id: 1, federation: 1, federated: 1 } });
 		if (!room || !isRoomNativeFederated(room)) {
 			return;
 		}
+
 		const localUser = await Users.findOneByUsername<Pick<IUser, '_id' | 'username' | 'federation' | 'federated'>>(user, {
 			projection: { _id: 1, username: 1, federation: 1, federated: 1 },
 		});
-
 		if (!localUser) {
+			return;
+		}
+
+		const hasUserJoinedRoom = await Subscriptions.findOneByRoomIdAndUserId(room._id, localUser?._id, { projection: { _id: 1 } });
+		if (!hasUserJoinedRoom) {
 			return;
 		}
 

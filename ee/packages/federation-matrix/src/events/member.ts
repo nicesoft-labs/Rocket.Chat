@@ -1,56 +1,14 @@
 import { Room } from '@rocket.chat/core-services';
 import type { Emitter } from '@rocket.chat/emitter';
 import type { HomeserverEventSignatures, UserID, RoomID, PduForType, EventID } from '@rocket.chat/federation-sdk';
-import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Logger } from '@rocket.chat/logger';
-import { Rooms, Subscriptions, Users } from '@rocket.chat/models';
+import { Rooms, Subscriptions } from '@rocket.chat/models';
 
-import { createOrUpdateFederatedUser, getUsernameServername } from '../FederationMatrix';
 import { getOrCreateFederatedRoom, getOrCreateFederatedUser } from './helpers';
 
 const logger = new Logger('federation-matrix:member');
 
-async function membershipJoinAction(event: HomeserverEventSignatures['homeserver.matrix.membership']['event']) {
-	const room = await Rooms.findOne({ 'federation.mrid': event.room_id });
-	if (!room) {
-		logger.warn(`No bridged room found for room_id: ${event.room_id}`);
-		return;
-	}
-
-	const [username, serverName, isLocal] = getUsernameServername(event.sender, federationSDK.getConfig('serverName'));
-
-	// for local users we must to remove the @ and the server domain
-	const localUser = isLocal && (await Users.findOneByUsername(username));
-
-	if (localUser) {
-		const subscription = await Subscriptions.findOneByRoomIdAndUserId(room._id, localUser._id);
-		if (subscription) {
-			return;
-		}
-		await Room.addUserToRoom(room._id, localUser);
-		return;
-	}
-
-	if (!serverName) {
-		throw new Error('Invalid sender format, missing server name');
-	}
-
-	const insertedId = await createOrUpdateFederatedUser({
-		username: event.state_key,
-		origin: serverName,
-		name: event.content.displayname || event.state_key,
-	});
-
-	const user = await Users.findOneById(insertedId);
-
-	if (!user) {
-		console.warn(`User with ID ${insertedId} not found after insertion`);
-		return;
-	}
-	await Room.addUserToRoom(room._id, user);
-}
-
-async function handleInvite(event: HomeserverEventSignatures['homeserver.matrix.membership']['event'], eventId: EventID): Promise<void> {
+export async function handleInvite(event: HomeserverEventSignatures['homeserver.matrix.membership']['event'], eventId: EventID): Promise<void> {
 	const { room_id: roomId, sender: senderId, state_key: userId, content } = event;
 
 	const inviterUser = await getOrCreateFederatedUser(senderId as UserID);
@@ -65,8 +23,10 @@ async function handleInvite(event: HomeserverEventSignatures['homeserver.matrix.
 		return;
 	}
 
-	const roomType = content.membership === 'invite' && content?.is_direct ? 'd' : 'c';
-	const strippedState = event.unsigned.stripped_state;
+	// we are not handling public rooms yet - in the future we should use 'c' for public rooms
+	// as well as should rethink the canAccessRoom authorization logic
+	const roomType = content.membership === 'invite' && content?.is_direct ? 'd' : 'p';
+	const strippedState = event.unsigned.invite_room_state;
 
 	const createState = strippedState?.find((state: PduForType<'m.room.create'>) => state.type === 'm.room.create');
 	const roomOriginDomain = createState?.sender?.split(':')?.pop();
@@ -109,48 +69,26 @@ async function handleInvite(event: HomeserverEventSignatures['homeserver.matrix.
 async function handleJoin(event: HomeserverEventSignatures['homeserver.matrix.membership']['event']): Promise<void> {
 	const { room_id: roomId, state_key: userId } = event;
 
-	const joiningUser = await getOrCreateFederatedUser(userId as UserID);
+	const joiningUser = await getOrCreateFederatedUser(userId);
 	if (!joiningUser) {
 		logger.error(`Failed to get or create joining user: ${userId}`);
 		return;
 	}
 
-	// TODO: move DB calls to models package
-	const room = await Rooms.findOne({ 'federation.mrid': roomId });
+	const room = await Rooms.findOneFederatedByMrid(roomId);
 	if (!room) {
-		logger.warn(`Join event for unknown room: ${roomId} - user may be joining before room creation event received`);
-		return membershipJoinAction(event);
+		throw new Error(`Room not found while joining user ${userId} to room ${roomId}`);
 	}
 
-	// TODO: move DB calls to models package
-	const subscription = await Subscriptions.findOne({
-		'rid': room._id,
-		'u._id': joiningUser._id,
+	const subscription = await Subscriptions.findOneByRoomIdAndUserId(room._id, joiningUser._id, {
+		projection: { _id: 1, invited: 1, federation: 1 },
 	});
-
 	if (!subscription) {
-		logger.info(`User ${userId} joining room ${roomId} directly (no prior invite)`);
-		return membershipJoinAction(event);
+		logger.error(`Subscription not found while joining user ${userId} to room ${roomId}`);
+		return;
 	}
 
-	logger.info(`User ${userId} accepting invite to room ${roomId}`);
-
-	// TODO: move DB calls to models package
-	await Subscriptions.updateOne(
-		{ _id: subscription._id },
-		{
-			$unset: {
-				'invited': 1,
-				'federation.inviteEventId': 1,
-				'federation.inviterUsername': 1,
-			},
-			$set: {
-				open: true,
-				alert: false,
-				_updatedAt: new Date(),
-			},
-		},
-	);
+	await Room.acceptRoomInvite(room, subscription, joiningUser);
 }
 
 async function handleLeave(event: HomeserverEventSignatures['homeserver.matrix.membership']['event']): Promise<void> {
@@ -162,10 +100,9 @@ async function handleLeave(event: HomeserverEventSignatures['homeserver.matrix.m
 		return;
 	}
 
-	// TODO: move DB calls to models package
-	const room = await Rooms.findOne({ 'federation.mrid': roomId });
+	const room = await Rooms.findOneFederatedByMrid(roomId);
 	if (!room) {
-		logger.warn(`Leave event for unknown room: ${roomId}`);
+		logger.error(`Room not found while leaving user ${userId} from room ${roomId}`);
 		return;
 	}
 
