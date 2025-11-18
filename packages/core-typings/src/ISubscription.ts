@@ -87,11 +87,3 @@ export interface IOmnichannelSubscription extends ISubscription {
 export interface ISubscriptionDirectMessage extends Omit<ISubscription, 'name'> {
 	t: 'd';
 }
-
-export function isInvitedSubscription(sub: ISubscription): boolean {
-	return sub.invited === true;
-}
-
-export function isFederatedInvite(sub: ISubscription): boolean {
-	return sub.invited === true && sub.federation !== undefined;
-}
