@@ -1,10 +1,12 @@
+import type { NicesoftLicenseSource } from '@rocket.chat/core-typings';
+
 import { promises as fs } from 'fs';
 
 const DEFAULT_LICENSE_PATH = '/etc/nicechat/license.json';
 const ENV_LICENSE_B64 = 'NICECHAT_LICENSE_B64';
 const ENV_LICENSE_PATH = 'NICECHAT_LICENSE_PATH';
 
-export type LicenseSource = 'env' | 'file';
+export type LicenseSource = NicesoftLicenseSource;
 
 export interface LicenseStorageResult {
 	source: LicenseSource;
@@ -33,8 +35,10 @@ export const readLicenseFromEnv = (): LicenseStorageResult | null => {
 	};
 };
 
+export const getLicenseFilePath = (): string => process.env[ENV_LICENSE_PATH] ?? DEFAULT_LICENSE_PATH;
+
 export const readLicenseFromFile = async (): Promise<LicenseStorageResult | null> => {
-	const path = process.env[ENV_LICENSE_PATH] ?? DEFAULT_LICENSE_PATH;
+	const path = getLicenseFilePath();
 	try {
 		const content = await fs.readFile(path, 'utf-8');
 		return {
