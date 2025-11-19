@@ -1,145 +1,171 @@
-import type { NicesoftLicenseDocument, NicesoftLicenseSource } from '@rocket.chat/core-typings';
 import { Meteor } from 'meteor/meteor';
-import { promises as fs } from 'fs';
-import { dirname } from 'path';
 
+import { API } from '../api';
 import { reloadLicense, getCurrentLicense } from '../../../../server/lib/nicesoft-license';
 import type { LicenseState } from '../../../../server/lib/nicesoft-license/types';
-import { getLicenseFilePath } from '../../../../server/lib/nicesoft-license/storage';
-import { API } from '../api';
+import { validateLicenseDocument } from '../../../../server/lib/nicesoft-license/validator';
+import { persistLicenseToFile, removeLicenseFile } from '../../../../server/lib/nicesoft-license/storage';
+import { emitLicenseUpdated } from '../../../../server/lib/nicesoft-license/events';
+import notifications from '../../../notifications/server/lib/Notifications';
+import type { NicesoftLicenseInfoResult } from '@rocket.chat/rest-typings';
 
-type LicenseStatus = 'valid' | 'invalid' | 'missing';
+const buildLicenseInfoResponse = (state: LicenseState = getCurrentLicense()): NicesoftLicenseInfoResult => {
+        const expiresAt = state.payload?.valid_to ?? null;
+        const expiresInSeconds = (() => {
+                if (!expiresAt) {
+                        return null;
+                }
 
-type LicenseInfoResponse = {
-        status: LicenseStatus;
-        payload?: NicesoftLicenseDocument;
-        expiresAt?: string;
-        reason?: string;
-        source?: NicesoftLicenseSource;
-        filePath?: string;
-};
+                const expiresDate = new Date(expiresAt);
+                if (Number.isNaN(expiresDate.getTime())) {
+                        return null;
+                }
 
-const determineStatus = (state: LicenseState): LicenseStatus => {
-        if (state.valid) {
-                return 'valid';
-        }
+                return Math.max(0, Math.floor((expiresDate.getTime() - Date.now()) / 1000));
+        })();
 
-        if (!state.payload && (!state.reason || /no license|not loaded/i.test(state.reason))) {
-                return 'missing';
-        }
-
-        return 'invalid';
-};
-
-const getLicenseInfo = (): LicenseInfoResponse => {
-        const state = getCurrentLicense();
         return {
-                status: determineStatus(state),
-                payload: state.payload,
-                expiresAt: state.payload?.valid_to,
-                reason: state.reason,
-                source: state.source,
-                filePath: state.filePath,
+                status: state.status,
+                source: state.source ?? null,
+                reason: state.reason ?? null,
+                expiresAt,
+                expiresInSeconds,
+                edition: state.payload?.edition ?? null,
+                tenant: state.payload?.tenant ?? null,
+                features: state.features ?? [],
+                limits: state.limits ?? {},
         };
 };
 
-const tryParseJson = (value: string): string | null => {
+const broadcastLicenseUpdated = (state: LicenseState): void => {
+        const payload = buildLicenseInfoResponse(state);
+        emitLicenseUpdated(state);
+        notifications.streamAll.emit('licenseUpdated', payload);
+};
+
+const decodeJsonString = (raw: string): unknown => {
         try {
-                const parsed = JSON.parse(value);
-                return JSON.stringify(parsed, null, 2);
+                return JSON.parse(raw);
         } catch (error) {
-                return null;
+                try {
+                        const decoded = Buffer.from(raw, 'base64').toString('utf-8');
+                        return JSON.parse(decoded);
+                } catch (err) {
+                        throw new Meteor.Error('error-invalid-license-json', 'Invalid license JSON');
+                }
         }
 };
 
-const decodeBase64 = (value: string): string => {
+const extractLicensePayload = async (bodyParams: unknown, request?: Request): Promise<unknown> => {
+        if (bodyParams && typeof bodyParams === 'object' && 'license' in (bodyParams as Record<string, any>)) {
+                return (bodyParams as Record<string, any>).license;
+        }
+
+        if (bodyParams !== undefined && bodyParams !== null) {
+                return bodyParams;
+        }
+
+        if (request) {
+                const rawText = await request.text();
+                if (rawText.trim()) {
+                        return rawText;
+                }
+        }
+
+        throw new Meteor.Error('error-invalid-license-json', 'License payload is required');
+};
+
+const normalizeLicenseDocument = (payload: unknown) => {
+        const parsedPayload = typeof payload === 'string' ? decodeJsonString(payload) : payload;
+
         try {
-                return Buffer.from(value, 'base64').toString('utf-8');
-        } catch (error) {
-                throw new Meteor.Error('error-invalid-license-json', 'Invalid license payload provided');
+                const document = validateLicenseDocument(parsedPayload);
+                const serialized = JSON.stringify(document, null, 2);
+                return { document, serialized };
+        } catch (error: any) {
+                throw new Meteor.Error('error-invalid-license-schema', error?.message ?? 'Invalid license payload');
         }
 };
 
-const normalizeLicensePayload = (payload: unknown): string => {
-        if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-                return JSON.stringify(payload, null, 2);
-        }
+const handleLicenseUpload = async (bodyParams: unknown, request?: Request): Promise<NicesoftLicenseInfoResult> => {
+        const rawPayload = await extractLicensePayload(bodyParams, request);
+        const normalized = normalizeLicenseDocument(rawPayload);
 
-        if (typeof payload !== 'string' || !payload.trim()) {
-                throw new Meteor.Error('error-invalid-license-json', 'License payload must be a JSON string or base64 value');
-        }
+        await persistLicenseToFile(normalized.serialized);
 
-        const trimmed = payload.trim();
-        const direct = tryParseJson(trimmed);
-        if (direct) {
-                return direct;
-        }
+        await reloadLicense();
+        const state = getCurrentLicense();
+        broadcastLicenseUpdated(state);
 
-        const decoded = tryParseJson(decodeBase64(trimmed));
-        if (decoded) {
-                return decoded;
-        }
-
-        throw new Meteor.Error('error-invalid-license-json', 'License payload must be a valid JSON document');
+        return buildLicenseInfoResponse(state);
 };
 
-const extractLicenseBody = (bodyParams: any): unknown => {
-        if (!bodyParams) {
-                return undefined;
-        }
+const handleLicenseDelete = async (): Promise<NicesoftLicenseInfoResult> => {
+        await removeLicenseFile();
 
-        if (typeof bodyParams === 'object' && 'license' in bodyParams) {
-                return bodyParams.license;
-        }
+        await reloadLicense();
+        const state = getCurrentLicense();
+        broadcastLicenseUpdated(state);
 
-        return bodyParams;
+        return buildLicenseInfoResponse(state);
 };
 
 API.v1.addRoute(
         'nicesoft.license.info',
-        { authRequired: true, permissionsRequired: ['view-privileged-setting'] },
+        { authRequired: true, permissionsRequired: ['manage-licensed-features'] },
         {
                 async get() {
-                        return API.v1.success(getLicenseInfo());
+                        return API.v1.success(buildLicenseInfoResponse());
                 },
         },
 );
 
 API.v1.addRoute(
         'nicesoft.license.upload',
-        { authRequired: true, permissionsRequired: ['edit-privileged-setting'] },
+        { authRequired: true, permissionsRequired: ['manage-licensed-features'] },
         {
                 async post() {
-                        const rawLicense = extractLicenseBody(this.bodyParams);
-
-                        if (!rawLicense) {
-                                return API.v1.failure('License payload is required', 'error-invalid-license-json');
-                        }
-
-                        let normalizedContent: string;
                         try {
-                                normalizedContent = normalizeLicensePayload(rawLicense);
-} catch (error) {
-if (error instanceof Meteor.Error) {
-return API.v1.failure(error.reason ?? error.error, error.error ?? 'error-invalid-license-json');
-}
+                                const response = await handleLicenseUpload(this.bodyParams, this.request as Request);
+                                return API.v1.success(response);
+                        } catch (error: any) {
+                                if (error instanceof Meteor.Error) {
+                                        if (error.error === 'error-invalid-license-json' || error.error === 'error-invalid-license-schema') {
+                                                return API.v1.failure(error.reason || error.error, error.error);
+                                        }
 
-return API.v1.failure('Invalid license payload', 'error-invalid-license-json');
-}
+                                        return API.v1.failure(error.reason || error.error);
+                                }
 
-                        const filePath = getLicenseFilePath();
-
-                        try {
-                                await fs.mkdir(dirname(filePath), { recursive: true });
-                                await fs.writeFile(filePath, normalizedContent, 'utf-8');
-                        } catch (error) {
-                                const message = error instanceof Error ? error.message : 'Failed to write license file';
-                                return API.v1.internalError(message);
+                                return API.v1.internalError(error?.message ?? 'Failed to process license');
                         }
-
-                        await reloadLicense();
-
-                        return API.v1.success(getLicenseInfo());
                 },
         },
 );
+
+API.v1.addRoute(
+        'nicesoft.license',
+        { authRequired: true, permissionsRequired: ['manage-licensed-features'] },
+        {
+                async delete() {
+                        try {
+                                const response = await handleLicenseDelete();
+                                return API.v1.success(response);
+                        } catch (error: any) {
+                                if (error instanceof Meteor.Error) {
+                                        return API.v1.failure(error.reason || error.error, error.error);
+                                }
+
+                                return API.v1.internalError(error?.message ?? 'Failed to delete license file');
+                        }
+                },
+        },
+);
+
+export {
+        buildLicenseInfoResponse,
+        extractLicensePayload,
+        normalizeLicenseDocument,
+        handleLicenseUpload,
+        handleLicenseDelete,
+};

@@ -1,6 +1,7 @@
 import type { NicesoftLicenseSource } from '@rocket.chat/core-typings';
 
 import { promises as fs } from 'fs';
+import { dirname } from 'path';
 
 const DEFAULT_LICENSE_PATH = '/etc/nicechat/license.json';
 const ENV_LICENSE_B64 = 'NICECHAT_LICENSE_B64';
@@ -36,6 +37,26 @@ export const readLicenseFromEnv = (): LicenseStorageResult | null => {
 };
 
 export const getLicenseFilePath = (): string => process.env[ENV_LICENSE_PATH] ?? DEFAULT_LICENSE_PATH;
+
+export const persistLicenseToFile = async (content: string): Promise<string> => {
+        const path = getLicenseFilePath();
+        await fs.mkdir(dirname(path), { recursive: true });
+        await fs.writeFile(path, content, 'utf-8');
+        return path;
+};
+
+export const removeLicenseFile = async (): Promise<void> => {
+        const path = getLicenseFilePath();
+        try {
+                await fs.unlink(path);
+        } catch (error: any) {
+                if (error?.code === 'ENOENT') {
+                        return;
+                }
+
+                throw new Error(`Failed to remove license file at ${path}: ${error?.message ?? error}`);
+        }
+};
 
 export const readLicenseFromFile = async (): Promise<LicenseStorageResult | null> => {
 	const path = getLicenseFilePath();
