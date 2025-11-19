@@ -1,5 +1,5 @@
 import type { IAuthorization, RoomAccessValidator } from '@rocket.chat/core-services';
-import { License, ServiceClass } from '@rocket.chat/core-services';
+import { ServiceClass } from '@rocket.chat/core-services';
 import type { IUser, IRole, IRoom, ISubscription } from '@rocket.chat/core-typings';
 import { Subscriptions, Rooms, Users, Roles, Permissions } from '@rocket.chat/models';
 import mem from 'mem';
@@ -7,6 +7,8 @@ import mem from 'mem';
 import { canAccessRoom } from './canAccessRoom';
 import { canReadRoom } from './canReadRoom';
 import { AuthorizationUtils } from '../../../app/authorization/lib/AuthorizationUtils';
+import { getGuestPermissionWhitelist } from './guestPermissions';
+import { onLicenseChanged } from '../../lib/nicesoft-license';
 
 import './canAccessRoomLivechat';
 
@@ -32,29 +34,29 @@ export class Authorization extends ServiceClass implements IAuthorization {
 			mem.clear(this.rolesHasPermissionCached);
 		};
 
-		this.onEvent('watch.roles', clearCache);
-		this.onEvent('permission.changed', clearCache);
-		this.onEvent('authorization.guestPermissions', (permissions: string[]) => {
-			AuthorizationUtils.addRolePermissionWhiteList('guest', permissions);
-		});
-	}
+		                this.onEvent('watch.roles', clearCache);
+                this.onEvent('permission.changed', clearCache);
+                this.onEvent('authorization.guestPermissions', (permissions: string[]) => {
+                        AuthorizationUtils.addRolePermissionWhiteList('guest', permissions);
+                });
 
-	async started(): Promise<void> {
-		try {
-			if (!(await License.hasValidLicense())) {
-				return;
-			}
+                onLicenseChanged(() => {
+                        try {
+                                this.applyGuestPermissions();
+                        } catch (error) {
+                                console.error('Failed to update guest permissions after license change', error);
+                        }
+                });
+        }
 
-			const permissions = await License.getGuestPermissions();
-			if (!permissions) {
-				return;
-			}
+        async started(): Promise<void> {
+                this.applyGuestPermissions();
+        }
 
-			AuthorizationUtils.addRolePermissionWhiteList('guest', permissions);
-		} catch (error) {
-			console.error('Authorization Service did not start correctly', error);
-		}
-	}
+        private applyGuestPermissions(): void {
+                const permissions = getGuestPermissionWhitelist();
+                AuthorizationUtils.addRolePermissionWhiteList('guest', permissions);
+        }
 
 	async hasAllPermission(userId: string, permissions: string[], scope?: string): Promise<boolean> {
 		if (!userId) {
