@@ -1,15 +1,11 @@
-export interface NicesoftLicenseDocument {
-	product: string;
-	edition: string;
-	valid_from?: string;
-	valid_to?: string;
-	features?: string[];
-	limits?: Record<string, number>;
-}
+import type { NicesoftLicenseDocument, NicesoftLicenseSource } from '@rocket.chat/core-typings';
+
+export type { NicesoftLicenseDocument };
 
 export interface LicenseState {
-	valid: boolean;
-	payload?: NicesoftLicenseDocument;
-	reason?: string;
-	source?: 'env' | 'file';
+valid: boolean;
+payload?: NicesoftLicenseDocument;
+reason?: string;
+source?: NicesoftLicenseSource;
+filePath?: string;
 }
