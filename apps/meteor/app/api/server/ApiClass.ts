@@ -1,6 +1,5 @@
 import type { IMethodConnection, IUser } from '@rocket.chat/core-typings';
 import type { Route, Router } from '@rocket.chat/http-router';
-import { License } from '@rocket.chat/license';
 import { Logger } from '@rocket.chat/logger';
 import { Users } from '@rocket.chat/models';
 import { Random } from '@rocket.chat/random';
@@ -955,7 +954,7 @@ export class APIClass<
 				this.router[method.toLowerCase() as 'get' | 'post' | 'put' | 'delete'](
 					`/${route}`.replaceAll('//', '/'),
 					{ ..._options, tags } as TypedOptions,
-					license(_options as TypedOptions, License),
+					license(_options as TypedOptions),
 					(operations[method as keyof Operations<TPathPattern, TOptions>] as Record<string, any>).action as any,
 				);
 				this._routes.push({
