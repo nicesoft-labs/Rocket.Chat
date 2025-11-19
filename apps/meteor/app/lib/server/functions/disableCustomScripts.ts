@@ -1,14 +1,12 @@
-import { License } from '@rocket.chat/license';
+import { hasFeature } from '../../../../server/lib/nicesoft-license';
+
+const DISABLE_CUSTOM_SCRIPTS_FEATURE = 'cloud.disableCustomScripts';
+
 
 export const disableCustomScripts = () => {
-	const license = License.getLicense();
+	if (process.env.DISABLE_CUSTOM_SCRIPTS !== 'true') {
+	return false;
+}
 
-	if (!license) {
-		return false;
-	}
-
-	const isCustomScriptDisabled = process.env.DISABLE_CUSTOM_SCRIPTS === 'true';
-	const isTrialLicense = license?.information.trial;
-
-	return isCustomScriptDisabled && isTrialLicense;
+return hasFeature(DISABLE_CUSTOM_SCRIPTS_FEATURE);
 };
