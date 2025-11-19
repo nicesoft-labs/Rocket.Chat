@@ -1,6 +1,5 @@
 import { ServiceStarter } from '@rocket.chat/core-services';
 import { LivechatInquiryStatus, type InquiryWithAgentInfo, type IOmnichannelQueue } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
 import { LivechatInquiry, LivechatRooms } from '@rocket.chat/models';
 import { tracerSpan } from '@rocket.chat/tracing';
 
@@ -12,6 +11,9 @@ import { RoutingManager } from '../../../app/livechat/server/lib/RoutingManager'
 import { getInquirySortMechanismSetting } from '../../../app/livechat/server/lib/settings';
 import { metrics } from '../../../app/metrics/server';
 import { settings } from '../../../app/settings/server';
+import { shouldPreventAction } from '../../lib/nicesoft-license';
+
+const MONTHLY_ACTIVE_CONTACTS_LIMIT = 'monthlyActiveContacts';
 
 const DEFAULT_RACE_TIMEOUT = 5000;
 
@@ -89,11 +91,11 @@ export class OmnichannelQueue implements IOmnichannelQueue {
 				return;
 			}
 
-			if (await License.shouldPreventAction('monthlyActiveContacts', 1)) {
-				queueLogger.debug('MAC limit reached. Queue wont execute');
-				this.running = false;
-				return;
-			}
+                        if (await shouldPreventAction(MONTHLY_ACTIVE_CONTACTS_LIMIT, 1)) {
+                                queueLogger.debug('MAC limit reached. Queue wont execute');
+                                this.running = false;
+                                return;
+                        }
 
 			// We still go 1 by 1, but we go with every queue every cycle instead of just 1 queue per cycle
 			// And we get tracing :)
