@@ -1,5 +1,4 @@
 import type { SettingValue } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
 import { Settings } from '@rocket.chat/models';
 import type { SignedSupportedVersions, SupportedVersions } from '@rocket.chat/server-cloud-communication';
 import type { Response } from '@rocket.chat/server-fetch';
@@ -14,11 +13,7 @@ import { generateWorkspaceBearerHttpHeader } from '../getWorkspaceAccessToken';
 import { supportedVersionsChooseLatest } from './supportedVersionsChooseLatest';
 import { updateAuditedBySystem } from '../../../../../server/settings/lib/auditedSettingUpdates';
 
-declare module '@rocket.chat/core-typings' {
-	interface ILicenseV3 {
-		supportedVersions?: SignedSupportedVersions;
-	}
-}
+import { getCurrentLicense } from '../../../../../server/lib/nicesoft-license';
 
 /** HELPERS */
 
@@ -136,12 +131,14 @@ const getSupportedVersionsToken = async (retry = 0) => {
 	 * Gets the latest version
 	 * return the token
 	 */
-	const [versionsFromLicense, cloudResponse] = await Promise.all([License.getLicense(), getSupportedVersionsFromCloud()]);
+	const licenseState = getCurrentLicense();
+	const versionsFromLicense = (licenseState.payload as { supportedVersions?: SignedSupportedVersions } | undefined)?.supportedVersions;
+	const cloudResponse = await getSupportedVersionsFromCloud();
 
 	const supportedVersions = await supportedVersionsChooseLatest(
-		supportedVersionsFromBuild,
-		versionsFromLicense?.supportedVersions,
-		(cloudResponse.success && cloudResponse.result) || undefined,
+	supportedVersionsFromBuild,
+	versionsFromLicense,
+	(cloudResponse.success && cloudResponse.result) || undefined,
 	);
 
 	SystemLogger.debug({
@@ -157,7 +154,7 @@ const getSupportedVersionsToken = async (retry = 0) => {
 				msg: 'Using supported versions from build',
 			});
 			break;
-		case versionsFromLicense?.supportedVersions:
+		case versionsFromLicense:
 			SystemLogger.info({
 				msg: 'Using supported versions from license',
 			});
