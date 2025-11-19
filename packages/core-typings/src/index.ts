@@ -40,6 +40,8 @@ export * from './IPushToken';
 export * from './IPushNotificationConfig';
 export * from './SlashCommands';
 export * from './license';
+export * from './NicesoftLicense';
+
 
 export * from './IUserDataFile';
 export * from './IUserSession';
