@@ -10,7 +10,6 @@ const models = {
 const mockedFetchWorkspaceSyncPayload = sinon.stub();
 
 const { syncCloudData } = proxyquire.noCallThru().load('../../../../../../../app/cloud/server/functions/syncWorkspace/syncCloudData.ts', {
-	'@rocket.chat/license': { DuplicatedLicenseError: sinon.stub() },
 	'@rocket.chat/models': models,
 	'../../../../../lib/callbacks': { callbacks: { run: sinon.stub() } },
 	'../../../../../lib/errors/CloudWorkspaceAccessError': { CloudWorkspaceAccessError: sinon.stub() },
