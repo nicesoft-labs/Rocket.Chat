@@ -143,6 +143,6 @@ href: '/admin/nicesoft-license',
 i18nLabel: 'Nicesoft_License',
 icon: 'key',
 permissionGranted: (): boolean =>
-hasAtLeastOnePermission(['view-privileged-setting', 'edit-privileged-setting']),
+hasAtLeastOnePermission(['manage-licensed-features']),
 },
 ]);

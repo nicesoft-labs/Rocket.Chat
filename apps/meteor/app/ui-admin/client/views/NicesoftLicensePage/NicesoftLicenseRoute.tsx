@@ -1,7 +1,7 @@
 import { useAtLeastOnePermission } from '@rocket.chat/ui-contexts';
 
 import NicesoftLicensePage from './NicesoftLicensePage';
-import NotAuthorizedPage from '../../notAuthorized/NotAuthorizedPage';
+import NotAuthorizedPage from '../../../../../client/views/notAuthorized/NotAuthorizedPage';
 
 const requiredPermissions = ['manage-licensed-features'] as const;
 

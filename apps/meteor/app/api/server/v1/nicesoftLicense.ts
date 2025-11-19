@@ -4,36 +4,48 @@ import { API } from '../api';
 import { reloadLicense, getCurrentLicense } from '../../../../server/lib/nicesoft-license';
 import type { LicenseState } from '../../../../server/lib/nicesoft-license/types';
 import { LicenseValidationError, parseLicensePayload } from '../../../../server/lib/nicesoft-license/validator';
-import { persistLicenseToFile, removeLicenseFile } from '../../../../server/lib/nicesoft-license/storage';
+import {
+        persistLicenseToFile,
+        removeLicenseFile,
+        persistLicenseToDatabase,
+        removeLicenseFromDatabase,
+} from '../../../../server/lib/nicesoft-license/storage';
 import { emitLicenseUpdated } from '../../../../server/lib/nicesoft-license/events';
 import notifications from '../../../notifications/server/lib/Notifications';
 import type { NicesoftLicenseInfoResult } from '@rocket.chat/rest-typings';
+import { getUploadFormData } from '../lib/getUploadFormData';
+
+const buildPayload = (statePayload: LicenseState['payload']): NicesoftLicenseInfoResult['payload'] => ({
+        product: statePayload?.product ?? null,
+        edition: statePayload?.edition ?? null,
+        tenant: statePayload?.tenant,
+        valid_from: statePayload?.valid_from ?? null,
+        valid_to: statePayload?.valid_to ?? null,
+        features: statePayload?.features ?? [],
+        limits: statePayload?.limits ?? {},
+});
 
 const buildLicenseInfoResponse = (state: LicenseState = getCurrentLicense()): NicesoftLicenseInfoResult => {
-        const expiresAt = state.payload?.valid_to ?? null;
-        const expiresInSeconds = (() => {
-                if (!expiresAt) {
+        const payload = buildPayload(state.payload);
+        const expires_in = (() => {
+                if (!payload.valid_to) {
                         return null;
                 }
 
-                const expiresDate = new Date(expiresAt);
+                const expiresDate = new Date(payload.valid_to);
                 if (Number.isNaN(expiresDate.getTime())) {
                         return null;
                 }
 
-                return Math.max(0, Math.floor((expiresDate.getTime() - Date.now()) / 1000));
+                return Math.floor((expiresDate.getTime() - Date.now()) / 1000);
         })();
 
         return {
                 status: state.status,
                 source: state.source ?? null,
                 reason: state.reason ?? null,
-                expiresAt,
-                expiresInSeconds,
-                edition: state.payload?.edition ?? null,
-                tenant: state.payload?.tenant ?? null,
-                features: state.features ?? [],
-                limits: state.limits ?? {},
+                expires_in,
+                payload,
         };
 };
 
@@ -43,7 +55,40 @@ const broadcastLicenseUpdated = (state: LicenseState): void => {
         notifications.streamAll.emit('licenseUpdated', payload);
 };
 
+const getContentType = (request?: Request): string | undefined => {
+        if (!request) {
+                return undefined;
+        }
+
+        if (typeof request.headers.get === 'function') {
+                return request.headers.get('content-type') ?? undefined;
+        }
+
+        const headers = (request as any).headers as Record<string, string> | undefined;
+        return headers?.['content-type'];
+};
+
 const extractLicensePayload = async (bodyParams: unknown, request?: Request): Promise<unknown> => {
+        const contentType = getContentType(request);
+
+        if (contentType && !/multipart\/form-data|application\/json|text\//i.test(contentType)) {
+                throw new Meteor.Error('unsupported-media-type', 'Unsupported content type');
+        }
+
+        if (contentType?.includes('multipart/form-data') && request) {
+                const { fileBuffer, fields } = await getUploadFormData<{ file?: Blob }, { license?: string }>({ request }, {
+                        field: 'file',
+                        fileOptional: true,
+                });
+
+                const payload = fileBuffer?.toString('utf-8') ?? fields.license;
+                if (payload && payload.trim()) {
+                        return payload;
+                }
+
+                throw new Meteor.Error('error-invalid-license-json', 'License payload is required');
+        }
+
         if (bodyParams && typeof bodyParams === 'object' && 'license' in (bodyParams as Record<string, any>)) {
                 return (bodyParams as Record<string, any>).license;
         }
@@ -69,8 +114,12 @@ const normalizeLicenseDocument = (payload: unknown) => {
                 return { document, serialized };
         } catch (error: any) {
                 if (error instanceof LicenseValidationError) {
-                        const code =
-                                error.kind === 'json' ? 'error-invalid-license-json' : 'error-invalid-license-schema';
+                        const code = {
+                                json: 'error-invalid-license-json',
+                                schema: 'invalid-license-schema',
+                                signature: 'invalid-license-signature',
+                                dates: 'invalid-license-dates',
+                        }[error.kind];
                         throw new Meteor.Error(code, error.message);
                 }
 
@@ -83,6 +132,7 @@ const handleLicenseUpload = async (bodyParams: unknown, request?: Request): Prom
         const normalized = normalizeLicenseDocument(rawPayload);
 
         await persistLicenseToFile(normalized.serialized);
+        await persistLicenseToDatabase(normalized.serialized);
 
         await reloadLicense();
         const state = getCurrentLicense();
@@ -92,13 +142,22 @@ const handleLicenseUpload = async (bodyParams: unknown, request?: Request): Prom
 };
 
 const handleLicenseDelete = async (): Promise<NicesoftLicenseInfoResult> => {
-        await removeLicenseFile();
+        await Promise.all([removeLicenseFile(), removeLicenseFromDatabase()]);
 
         await reloadLicense();
         const state = getCurrentLicense();
-        broadcastLicenseUpdated(state);
+        const responseState =
+                state.source === 'env'
+                        ? {
+                                  ...state,
+                                  reason:
+                                          state.reason ??
+                                          'License loaded from environment and cannot be removed through the API',
+                          }
+                        : state;
+        broadcastLicenseUpdated(responseState);
 
-        return buildLicenseInfoResponse(state);
+        return buildLicenseInfoResponse(responseState);
 };
 
 API.v1.addRoute(
@@ -121,7 +180,15 @@ API.v1.addRoute(
                                 return API.v1.success(response);
                         } catch (error: any) {
                                 if (error instanceof Meteor.Error) {
-                                        if (error.error === 'error-invalid-license-json' || error.error === 'error-invalid-license-schema') {
+                                        if (
+                                                [
+                                                        'error-invalid-license-json',
+                                                        'invalid-license-schema',
+                                                        'invalid-license-signature',
+                                                        'invalid-license-dates',
+                                                        'unsupported-media-type',
+                                                ].includes(error.error),
+                                        ) {
                                                 return API.v1.failure(error.reason || error.error, error.error);
                                         }
 

@@ -5094,8 +5094,10 @@
   "Nicesoft_License_Source_Env": "Переменная окружения",
   "Nicesoft_License_Source_DB": "База данных",
   "Nicesoft_License_Source_File": "Файл лицензии",
+  "Nicesoft_License_Product": "Продукт",
   "Nicesoft_License_Edition": "Редакция",
   "Nicesoft_License_Tenant": "Тенант",
+  "Nicesoft_License_Valid_From": "Действует с",
   "Nicesoft_License_Valid_To": "Действует до",
   "Nicesoft_License_Not_Available": "Недоступно",
   "Nicesoft_License_Features": "Возможности",
@@ -5116,5 +5118,14 @@
   "Nicesoft_License_Empty_Payload": "Добавьте лицензию перед загрузкой",
   "Nicesoft_License_Days_Left": "Остался {{count}} день",
   "Nicesoft_License_Days_Left_plural": "Осталось {{count}} дней",
-  "Nicesoft_License_Expired": "Срок лицензии истёк"
+  "Nicesoft_License_Expired": "Срок лицензии истёк",
+  "Nicesoft_License_Status_Expiring_Soon": "Лицензия скоро истечёт",
+  "Nicesoft_License_Status_Expiring_Soon_Description": "Срок действия лицензии подходит к концу. Обновите её, чтобы сохранить доступ к функциям.",
+  "Nicesoft_License_Status_Expired_Description": "Эта лицензия больше не действует. Загрузите новую, чтобы восстановить доступ.",
+  "Nicesoft_License_Env_Not_Removable": "Лицензия из переменных окружения не может быть удалена через API.",
+  "Nicesoft_License_Expired_Label": "Лицензия недействительна",
+  "Nicesoft_License_Error_Invalid_Schema": "Некорректный формат лицензии",
+  "Nicesoft_License_Error_Invalid_Signature": "Не удалось проверить подпись лицензии",
+  "Nicesoft_License_Error_Invalid_Dates": "Даты действия лицензии некорректны или истекли",
+  "Nicesoft_License_Error_Unsupported_Media": "Неподдерживаемый формат загрузки"
 }

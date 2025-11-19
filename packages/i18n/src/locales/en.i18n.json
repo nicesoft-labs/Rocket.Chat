@@ -7110,8 +7110,10 @@
   "Nicesoft_License_Source_Env": "Environment variable",
   "Nicesoft_License_Source_DB": "Database",
   "Nicesoft_License_Source_File": "License file",
+  "Nicesoft_License_Product": "Product",
   "Nicesoft_License_Edition": "Edition",
   "Nicesoft_License_Tenant": "Tenant",
+  "Nicesoft_License_Valid_From": "Valid from",
   "Nicesoft_License_Valid_To": "Valid until",
   "Nicesoft_License_Not_Available": "Not available",
   "Nicesoft_License_Features": "Features",
@@ -7132,6 +7134,15 @@
   "Nicesoft_License_Empty_Payload": "Provide a license before uploading",
   "Nicesoft_License_Days_Left": "{{count}} day left",
   "Nicesoft_License_Days_Left_plural": "{{count}} days left",
-  "Nicesoft_License_Expired": "This license has expired"
+  "Nicesoft_License_Expired": "This license has expired",
+  "Nicesoft_License_Status_Expiring_Soon": "License expires soon",
+  "Nicesoft_License_Status_Expiring_Soon_Description": "Your license will expire soon. Please refresh it to keep features active.",
+  "Nicesoft_License_Status_Expired_Description": "This license is no longer valid. Upload a new one to restore access.",
+  "Nicesoft_License_Env_Not_Removable": "License provided via environment variables cannot be removed through the API.",
+  "Nicesoft_License_Expired_Label": "License is no longer valid",
+  "Nicesoft_License_Error_Invalid_Schema": "License format is invalid",
+  "Nicesoft_License_Error_Invalid_Signature": "License signature could not be verified",
+  "Nicesoft_License_Error_Invalid_Dates": "License dates are invalid or expired",
+  "Nicesoft_License_Error_Unsupported_Media": "Unsupported upload format"
 }
 }

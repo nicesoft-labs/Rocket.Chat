@@ -2,26 +2,59 @@ import { promises as fs } from 'fs';
 import { mkdtemp } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { generateKeyPairSync, sign } from 'crypto';
 
 import { loadLicenseFromStorage } from './storage';
 import { getCurrentLicense, reloadLicense } from './cache';
 import { getLimit, hasFeature, isLicensed } from './helpers';
 
 const ORIGINAL_ENV = { ...process.env };
+const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+
+const canonicalize = (value: unknown): unknown => {
+        if (Array.isArray(value)) {
+                return value.map(canonicalize);
+        }
+
+        if (value && typeof value === 'object') {
+                return Object.keys(value as Record<string, unknown>)
+                        .sort()
+                        .reduce((result, key) => {
+                                (result as Record<string, unknown>)[key] = canonicalize(
+                                        (value as Record<string, unknown>)[key],
+                                );
+                                return result;
+                        }, {} as Record<string, unknown>);
+        }
+
+        return value;
+};
+
+const signLicense = (payload: Record<string, any>) => {
+        const canonicalPayload = JSON.stringify(canonicalize(payload));
+        const signature = sign(null, Buffer.from(canonicalPayload), privateKey).toString('base64');
+        return { ...payload, signature };
+};
 
 const createLicense = () =>
-        JSON.stringify({
-                product: 'NiceChat',
-                edition: 'pro',
-                valid_from: '2024-01-01T00:00:00.000Z',
-                valid_to: '2025-01-01T00:00:00.000Z',
-                features: ['voice', 'federation'],
-                limits: {
-                        seats: 100,
-		},
-	});
+        JSON.stringify(
+                signLicense({
+                        product: 'NiceChat',
+                        edition: 'pro',
+                        valid_from: '2024-01-01T00:00:00.000Z',
+                        valid_to: '2025-01-01T00:00:00.000Z',
+                        features: ['voice', 'federation'],
+                        limits: {
+                                seats: 100,
+                        },
+                }),
+        );
 
 describe('Nicesoft License Engine', () => {
+        beforeEach(() => {
+                process.env.NICECHAT_LICENSE_PUBLIC_KEY = publicKey.export({ format: 'pem', type: 'spki' }).toString();
+        });
+
         afterEach(async () => {
                 process.env = { ...ORIGINAL_ENV };
                 await reloadLicense();

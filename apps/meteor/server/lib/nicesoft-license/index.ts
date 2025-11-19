@@ -1,7 +1,15 @@
 export { reloadLicense, getCurrentLicense } from './cache';
 export { isLicensed, hasFeature, getLimit } from './helpers';
-export { loadLicenseFromStorage, readLicenseFromEnv, readLicenseFromFile, getLicenseFilePath } from './storage';
-export { validateLicenseDocument, parseLicensePayload, LicenseValidationError } from './validator';
+export {
+        loadLicenseFromStorage,
+        readLicenseFromEnv,
+        readLicenseFromFile,
+        getLicenseFilePath,
+        persistLicenseToDatabase,
+        removeLicenseFromDatabase,
+        readLicenseFromDatabase,
+} from './storage';
+export { validateLicenseDocument, parseLicensePayload, sanitizeLicensePayload, LicenseValidationError } from './validator';
 export {
         getActiveUsersLimitInfo,
         getGuestUsersLimitInfo,
