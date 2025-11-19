@@ -1,5 +1,6 @@
 import type { NicesoftLicenseDocument } from '@rocket.chat/core-typings';
 
+import { emitLicenseChanged } from './events';
 import { loadLicenseFromStorage, type LicenseStorageResult } from './storage';
 import type { LicenseState } from './types';
 
@@ -12,9 +13,14 @@ filePath: undefined,
 };
 
 const buildInvalidState = (reason: string): LicenseState => ({
-	valid: false,
-	reason,
+        valid: false,
+        reason,
 });
+
+const updateState = (state: LicenseState): void => {
+        currentState = state;
+        emitLicenseChanged(currentState);
+};
 
 const validateLicenseDocument = (payload: unknown): NicesoftLicenseDocument => {
 	if (!payload || typeof payload !== 'object') {
@@ -34,31 +40,31 @@ let storageResult: LicenseStorageResult | null = null;
 try {
 storageResult = await loadLicenseFromStorage();
 } catch (error: any) {
-currentState = buildInvalidState(error?.message ?? 'Failed to load license');
+updateState(buildInvalidState(error?.message ?? 'Failed to load license'));
 return;
 }
 
 
-	if (!storageResult) {
-		currentState = buildInvalidState('No license found');
-		return;
-	}
+        if (!storageResult) {
+                updateState(buildInvalidState('No license found'));
+                return;
+        }
 
 try {
 const payload = JSON.parse(storageResult.content);
 const document = validateLicenseDocument(payload);
-currentState = {
+updateState({
 valid: true,
 payload: document,
 source: storageResult.source,
 filePath: storageResult.path,
-};
+});
 } catch (error: any) {
-currentState = {
+updateState({
 ...buildInvalidState(error?.message ?? 'Invalid license document'),
 source: storageResult.source,
 filePath: storageResult.path,
-};
+});
 }
 };
 
