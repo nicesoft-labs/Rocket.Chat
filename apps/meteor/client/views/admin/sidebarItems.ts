@@ -131,11 +131,18 @@ export const {
 		icon: 'flask',
 		permissionGranted: () => defaultFeaturesPreview?.length > 0,
 	},
-	{
-		href: '/admin/settings',
-		i18nLabel: 'Settings',
-		icon: 'customize',
-		permissionGranted: (): boolean =>
-			hasAtLeastOnePermission(['view-privileged-setting', 'edit-privileged-setting', 'manage-selected-settings']),
-	},
+{
+href: '/admin/settings',
+i18nLabel: 'Settings',
+icon: 'customize',
+permissionGranted: (): boolean =>
+hasAtLeastOnePermission(['view-privileged-setting', 'edit-privileged-setting', 'manage-selected-settings']),
+},
+{
+href: '/admin/nicesoft-license',
+i18nLabel: 'Nicesoft_License',
+icon: 'key',
+permissionGranted: (): boolean =>
+hasAtLeastOnePermission(['view-privileged-setting', 'edit-privileged-setting']),
+},
 ]);
