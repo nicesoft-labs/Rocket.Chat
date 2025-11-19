@@ -2,10 +2,15 @@ import { AppStatus } from '@rocket.chat/apps-engine/definition/AppStatus';
 import type { IMarketplaceInfo } from '@rocket.chat/apps-engine/server/marketplace';
 import { AppInstallationSource, type IAppStorageItem } from '@rocket.chat/apps-engine/server/storage';
 import type { Apps } from '@rocket.chat/core-services';
-import type { LicenseImp } from '@rocket.chat/license';
 import { expect } from 'chai';
 
 import { _canEnableApp } from '../../../../../ee/app/license/server/canEnableApp';
+
+type LicenseMock = {
+hasModule(): boolean;
+shouldPreventAction(): boolean;
+hasValidLicense(): boolean;
+};
 
 const getDefaultApp = (): IAppStorageItem => ({
 	_id: '6706d9258e0ca97c2f0cc885',
@@ -45,7 +50,7 @@ describe('canEnableApp', () => {
 			},
 		} as unknown as typeof Apps;
 
-		const LicenseMock = {} as unknown as LicenseImp;
+		const LicenseMock = {} as LicenseMock;
 
 		const deps = { Apps: AppsMock, License: LicenseMock };
 
@@ -58,17 +63,17 @@ describe('canEnableApp', () => {
 		},
 	} as unknown as typeof Apps;
 
-	const LicenseMock = {
-		hasModule() {
-			return false;
-		},
-		shouldPreventAction() {
-			return true;
-		},
-		hasValidLicense() {
-			return false;
-		},
-	} as unknown as LicenseImp;
+const LicenseMock: LicenseMock = {
+hasModule() {
+return false;
+},
+shouldPreventAction() {
+return true;
+},
+hasValidLicense() {
+return false;
+},
+};
 
 	const deps = { Apps: AppsMock, License: LicenseMock };
 
@@ -91,7 +96,7 @@ describe('canEnableApp', () => {
 	});
 
 	it('should throw the message "invalid-license" when appropriate', () => {
-		const License = { ...LicenseMock, shouldPreventAction: () => false } as unknown as LicenseImp;
+		const License = { ...LicenseMock, shouldPreventAction: () => false } as LicenseMock;
 
 		const app = getDefaultApp();
 		app.installationSource = AppInstallationSource.MARKETPLACE;
@@ -110,17 +115,17 @@ describe('canEnableApp', () => {
 	});
 
 	it('should not throw if license allows it', () => {
-		const License = {
-			hasModule() {
-				return true;
-			},
-			shouldPreventAction() {
-				return false;
-			},
-			hasValidLicense() {
-				return true;
-			},
-		} as unknown as LicenseImp;
+const License: LicenseMock = {
+hasModule() {
+return true;
+},
+shouldPreventAction() {
+return false;
+},
+hasValidLicense() {
+return true;
+},
+};
 
 		const deps = { Apps: AppsMock, License };
 
