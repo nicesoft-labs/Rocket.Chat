@@ -3,7 +3,7 @@ import { useAtLeastOnePermission } from '@rocket.chat/ui-contexts';
 import NicesoftLicensePage from './NicesoftLicensePage';
 import NotAuthorizedPage from '../../notAuthorized/NotAuthorizedPage';
 
-const requiredPermissions = ['view-privileged-setting', 'edit-privileged-setting'] as const;
+const requiredPermissions = ['manage-licensed-features'] as const;
 
 const NicesoftLicenseRoute = () => {
         const canAccess = useAtLeastOnePermission(requiredPermissions);

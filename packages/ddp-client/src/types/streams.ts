@@ -1,8 +1,8 @@
 import type { AppStatus } from '@rocket.chat/apps-engine/definition/AppStatus';
 import type { ISetting as AppsSetting } from '@rocket.chat/apps-engine/definition/settings';
 import type {
-	IMessage,
-	IRoom,
+        IMessage,
+        IRoom,
 	ISetting,
 	ISubscription,
 	IRole,
@@ -23,9 +23,10 @@ import type {
 	IBanner,
 	LicenseLimitKind,
 	ICustomUserStatus,
-	IWebdavAccount,
-	MessageAttachment,
+        IWebdavAccount,
+        MessageAttachment,
 } from '@rocket.chat/core-typings';
+import type { NicesoftLicenseInfoResult } from '@rocket.chat/rest-typings';
 import type { ServerMediaSignal } from '@rocket.chat/media-signaling';
 import type * as UiKit from '@rocket.chat/ui-kit';
 
@@ -104,12 +105,13 @@ export interface StreamerEvents {
 				| [key: 'deleteCustomSound', args: [{ soundData: ICustomSound }]]
 				| [key: 'updateCustomSound', args: [{ soundData: ICustomSound }]],
 			];
-		},
-		{ key: 'public-settings-changed'; args: ['inserted' | 'updated' | 'removed' | 'changed', ISetting] },
-		{ key: 'deleteCustomSound'; args: [{ soundData: ICustomSound }] },
-		{ key: 'updateCustomSound'; args: [{ soundData: ICustomSound }] },
-		{ key: 'license'; args: [{ preventedActions: Record<LicenseLimitKind, boolean> }] | [] },
-	];
+                },
+                { key: 'public-settings-changed'; args: ['inserted' | 'updated' | 'removed' | 'changed', ISetting] },
+                { key: 'deleteCustomSound'; args: [{ soundData: ICustomSound }] },
+                { key: 'updateCustomSound'; args: [{ soundData: ICustomSound }] },
+                { key: 'licenseUpdated'; args: [NicesoftLicenseInfoResult] },
+                { key: 'license'; args: [{ preventedActions: Record<LicenseLimitKind, boolean> }] | [] },
+        ];
 
 	'notify-user': [
 		{ key: `${string}/rooms-changed`; args: ['inserted' | 'updated' | 'removed' | 'changed', IRoom] },

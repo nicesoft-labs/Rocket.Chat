@@ -13,7 +13,7 @@ import {
 } from '@rocket.chat/fuselage';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useEndpoint, useToastMessageDispatch, useTranslation } from '@rocket.chat/ui-contexts';
+import { useEndpoint, useStream, useToastMessageDispatch, useTranslation } from '@rocket.chat/ui-contexts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Page, PageHeader, PageScrollableContentWithShadow } from '../../../components/Page';
@@ -34,9 +34,11 @@ const NicesoftLicensePage = () => {
         const dispatchToastMessage = useToastMessageDispatch();
         const queryClient = useQueryClient();
         const formatDateAndTime = useFormatDateAndTime();
+        const stream = useStream('notify-all');
 
         const getLicenseInfo = useEndpoint<'GET', '/v1/nicesoft.license.info'>('GET', '/v1/nicesoft.license.info');
         const uploadLicense = useEndpoint<'POST', '/v1/nicesoft.license.upload'>('POST', '/v1/nicesoft.license.upload');
+        const deleteLicense = useEndpoint<'DELETE', '/v1/nicesoft.license'>('DELETE', '/v1/nicesoft.license');
 
         const licenseQuery = useQuery<LicenseInfo>({
                 queryKey: ['nicesoft-license-info'],
@@ -45,10 +47,10 @@ const NicesoftLicensePage = () => {
 
         const [licenseText, setLicenseText] = useState('');
         const [isUploading, setIsUploading] = useState(false);
+        const [isDeleting, setIsDeleting] = useState(false);
 
         const status = licenseQuery.data?.status ?? 'missing';
         const source = licenseQuery.data?.source;
-        const filePath = licenseQuery.data?.filePath;
 
         const statusLabels = useMemo(() => {
                 switch (status) {
@@ -79,10 +81,10 @@ const NicesoftLicensePage = () => {
                         return t('Nicesoft_License_Source_Env');
                 }
 
-                return t('Nicesoft_License_Source_File', { path: filePath ?? '' });
-        }, [filePath, source, t]);
+                return t('Nicesoft_License_Source_File');
+        }, [source, t]);
 
-        const expiresAt = licenseQuery.data?.expiresAt ?? licenseQuery.data?.payload?.valid_to;
+        const expiresAt = licenseQuery.data?.expiresAt ?? null;
         const expiresDate = expiresAt ? new Date(expiresAt) : undefined;
         const isExpirationValid = Boolean(expiresDate && !Number.isNaN(expiresDate.getTime()));
         const daysRemaining = useMemo(() => {
@@ -94,10 +96,18 @@ const NicesoftLicensePage = () => {
         }, [expiresDate, isExpirationValid]);
 
         useEffect(() => {
-                        if (licenseQuery.isError) {
-                                dispatchToastMessage({ type: 'error', message: t('Nicesoft_License_Load_Failed') });
-                        }
+                if (licenseQuery.isError) {
+                        dispatchToastMessage({ type: 'error', message: t('Nicesoft_License_Load_Failed') });
+                }
         }, [licenseQuery.isError, dispatchToastMessage, t]);
+
+        useEffect(() => {
+                const unsubscribe = stream('licenseUpdated', async () => {
+                        await queryClient.invalidateQueries({ queryKey: ['nicesoft-license-info'] });
+                });
+
+                return unsubscribe;
+        }, [queryClient, stream]);
 
         const handleUpload = useCallback(
                 async (event: FormEvent<HTMLFormElement>) => {
@@ -126,6 +136,23 @@ const NicesoftLicensePage = () => {
                 },
                 [licenseText, dispatchToastMessage, t, uploadLicense, queryClient],
         );
+
+        const handleDelete = useCallback(async () => {
+                setIsDeleting(true);
+                try {
+                        await deleteLicense();
+                        dispatchToastMessage({ type: 'success', message: t('Nicesoft_License_Delete_Success') });
+                        await queryClient.invalidateQueries({ queryKey: ['nicesoft-license-info'] });
+                } catch (error) {
+                        if (error instanceof Error) {
+                                dispatchToastMessage({ type: 'error', message: error.message });
+                        } else {
+                                dispatchToastMessage({ type: 'error', message: t('Nicesoft_License_Delete_Error') });
+                        }
+                } finally {
+                        setIsDeleting(false);
+                }
+        }, [deleteLicense, dispatchToastMessage, queryClient, t]);
 
         const handleFileUpload = useCallback((event: ChangeEvent<HTMLInputElement>) => {
                 const file = event.currentTarget.files?.[0];
@@ -164,9 +191,8 @@ const NicesoftLicensePage = () => {
                 );
         }
 
-        const payload = licenseQuery.data?.payload;
-        const features = payload?.features ?? [];
-        const limits = payload?.limits ? Object.entries(payload.limits) : [];
+        const features = licenseQuery.data?.features ?? [];
+        const limits = licenseQuery.data?.limits ? Object.entries(licenseQuery.data.limits) : [];
         const formattedExpiration = isExpirationValid && expiresDate ? formatDateAndTime(expiresDate) : undefined;
         const daysRemainingLabel = useMemo(() => {
                 if (daysRemaining === null) {
@@ -187,6 +213,15 @@ const NicesoftLicensePage = () => {
                                         <Button icon='reload' onClick={() => licenseQuery.refetch()} loading={licenseQuery.isFetching}>
                                                 {t('Refresh')}
                                         </Button>
+                                        <Button
+                                                danger
+                                                icon='trash'
+                                                disabled={status === 'missing'}
+                                                loading={isDeleting}
+                                                onClick={handleDelete}
+                                        >
+                                                {t('Nicesoft_License_Delete')}
+                                        </Button>
                                 </ButtonGroup>
                         </PageHeader>
                         <PageScrollableContentWithShadow>
@@ -203,11 +238,11 @@ const NicesoftLicensePage = () => {
                                                 <FieldGroup>
                                                         <Field>
                                                                 <FieldLabel>{t('Nicesoft_License_Edition')}</FieldLabel>
-                                                                <FieldRow>{payload?.edition ?? t('Nicesoft_License_Not_Available')}</FieldRow>
+                                                                <FieldRow>{licenseQuery.data?.edition ?? t('Nicesoft_License_Not_Available')}</FieldRow>
                                                         </Field>
                                                         <Field>
                                                                 <FieldLabel>{t('Nicesoft_License_Tenant')}</FieldLabel>
-                                                                <FieldRow>{payload?.tenant ?? t('Nicesoft_License_Not_Available')}</FieldRow>
+                                                                <FieldRow>{licenseQuery.data?.tenant ?? t('Nicesoft_License_Not_Available')}</FieldRow>
                                                         </Field>
                                                         <Field>
                                                                 <FieldLabel>{t('Nicesoft_License_Valid_To')}</FieldLabel>

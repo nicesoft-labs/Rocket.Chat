@@ -7,6 +7,7 @@ emitter.setMaxListeners(0);
 
 type LicenseEventMap = {
         licenseChanged: (state: LicenseState) => void;
+        licenseUpdated: (state: LicenseState) => void;
         limitReached: (limit: string) => void;
         limitRestored: (limit: string) => void;
 };
@@ -22,6 +23,10 @@ export const emitLicenseChanged = (state: LicenseState): void => {
         emitter.emit('licenseChanged', state);
 };
 
+export const emitLicenseUpdated = (state: LicenseState): void => {
+        emitter.emit('licenseUpdated', state);
+};
+
 export const emitLimitReached = (limit: string): void => {
         emitter.emit('limitReached', limit);
 };
@@ -32,6 +37,9 @@ export const emitLimitRestored = (limit: string): void => {
 
 export const onLicenseChanged = (handler: LicenseEventMap['licenseChanged']): (() => void) =>
         addListener('licenseChanged', handler);
+
+export const onLicenseUpdated = (handler: LicenseEventMap['licenseUpdated']): (() => void) =>
+        addListener('licenseUpdated', handler);
 
 export const onLimitReached = (handler: LicenseEventMap['limitReached']): (() => void) =>
         addListener('limitReached', handler);
