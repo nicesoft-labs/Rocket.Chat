@@ -1,13 +1,26 @@
 import { ServiceClassInternal } from '@rocket.chat/core-services';
 import type { IOmnichannelService } from '@rocket.chat/core-services';
 import type { AtLeast, IOmnichannelQueue, IOmnichannelRoom } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
+import { LivechatContacts } from '@rocket.chat/models';
 import moment from 'moment';
 
 import { OmnichannelQueue } from './queue';
 import { RoutingManager } from '../../../app/livechat/server/lib/RoutingManager';
 import { notifyAgentStatusChanged } from '../../../app/livechat/server/lib/omni-users';
 import { settings } from '../../../app/settings/server';
+import {
+        onLimitReached,
+        onLimitRestored,
+        onLicenseChanged,
+        registerLimitCounter,
+        shouldPreventAction,
+} from '../../lib/nicesoft-license';
+
+const MONTHLY_ACTIVE_CONTACTS_LIMIT = 'monthlyActiveContacts';
+
+registerLimitCounter(MONTHLY_ACTIVE_CONTACTS_LIMIT, () =>
+        LivechatContacts.countContactsOnPeriod(moment.utc().format('YYYY-MM')),
+);
 
 export class OmnichannelService extends ServiceClassInternal implements IOmnichannelService {
 	protected name = 'omnichannel';
@@ -32,28 +45,46 @@ export class OmnichannelService extends ServiceClassInternal implements IOmnicha
 		});
 	}
 
-	async started() {
-		settings.watchMultiple(['Livechat_enabled', 'Livechat_Routing_Method'], () => {
-			this.queueWorker.shouldStart();
-		});
+        async started() {
+                settings.watchMultiple(['Livechat_enabled', 'Livechat_Routing_Method'], () => {
+                        this.queueWorker.shouldStart();
+                });
 
-		License.onLimitReached('monthlyActiveContacts', async (): Promise<void> => {
-			this.queueWorker.isRunning() && (await this.queueWorker.stop());
-		});
+                onLimitReached(async (limit) => {
+                        if (limit !== MONTHLY_ACTIVE_CONTACTS_LIMIT) {
+                                return;
+                        }
 
-		License.onValidateLicense(async (): Promise<void> => {
-			RoutingManager.isMethodSet() && (await this.queueWorker.shouldStart());
-		});
+                        if (this.queueWorker.isRunning()) {
+                                await this.queueWorker.stop();
+                        }
+                });
 
-		// NOTE: When there's no license or license is invalid, we fallback to CE behavior
-		// CE behavior means there's no MAC limit, so we start the queue
-		License.onInvalidateLicense(async (): Promise<void> => {
-			this.queueWorker.isRunning() && (await this.queueWorker.shouldStart());
-		});
+                const restartQueue = async (): Promise<void> => {
+                        if (RoutingManager.isMethodSet()) {
+                                await this.queueWorker.shouldStart();
+                        }
+                };
 	}
 
-	async isWithinMACLimit(room: AtLeast<IOmnichannelRoom, 'v'>): Promise<boolean> {
-		const currentMonth = moment.utc().format('YYYY-MM');
-		return room.v?.activity?.includes(currentMonth) || !(await License.shouldPreventAction('monthlyActiveContacts'));
-	}
+                onLimitRestored(async (limit) => {
+                        if (limit !== MONTHLY_ACTIVE_CONTACTS_LIMIT) {
+                                return;
+                        }
+
+                        await restartQueue();
+                });
+
+                onLicenseChanged(async () => {
+                        await restartQueue();
+                });
+        }
+
+        async isWithinMACLimit(room: AtLeast<IOmnichannelRoom, 'v'>): Promise<boolean> {
+                const currentMonth = moment.utc().format('YYYY-MM');
+                return (
+                        room.v?.activity?.includes(currentMonth) ||
+                        !(await shouldPreventAction(MONTHLY_ACTIVE_CONTACTS_LIMIT))
+                );
+        }
 }
