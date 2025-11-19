@@ -1,5 +1,6 @@
+import type { NicesoftLicenseDocument } from '@rocket.chat/core-typings';
+
 import { getCurrentLicense } from './cache';
-import type { NicesoftLicenseDocument } from './types';
 
 const getPayload = (): NicesoftLicenseDocument | undefined => getCurrentLicense().payload;
 
