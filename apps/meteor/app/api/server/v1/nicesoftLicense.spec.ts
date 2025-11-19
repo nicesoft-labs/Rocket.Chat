@@ -236,4 +236,25 @@ describe('nicesoft license API helpers', () => {
                 expect(streamAll.emit).toHaveBeenCalledWith('licenseUpdated', response);
                 expect(response.status).toBe('missing');
         });
+
+        it('handleLicenseDelete rejects when license source is env', async () => {
+                getCurrentLicense.mockReturnValue({
+                        status: 'valid',
+                        valid: true,
+                        payload: validStatePayload,
+                        features: validStatePayload.features,
+                        limits: validStatePayload.limits,
+                        reason: null,
+                        source: 'env',
+                        filePath: undefined,
+                } satisfies LicenseState);
+
+                await expect(handleLicenseDelete()).rejects.toThrow(new Meteor.Error('license-env-readonly'));
+
+                expect(removeLicenseFile).toHaveBeenCalledTimes(1);
+                expect(removeLicenseFromDatabase).toHaveBeenCalledTimes(1);
+                expect(reloadLicense).toHaveBeenCalledTimes(1);
+                expect(streamAll.emit).not.toHaveBeenCalled();
+                expect(emitLicenseUpdated).not.toHaveBeenCalled();
+        });
 });

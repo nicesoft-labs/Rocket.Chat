@@ -110,6 +110,9 @@ const NicesoftLicensePage = () => {
                         if (code === 'unsupported-media-type') {
                                 return t('Nicesoft_License_Error_Unsupported_Media');
                         }
+                        if (code === 'license-env-readonly') {
+                                return t('Nicesoft_License_Env_Delete_Not_Allowed');
+                        }
 
                         return (error as Error)?.message || t(fallback);
                 },
@@ -166,6 +169,14 @@ const NicesoftLicensePage = () => {
         );
 
         const handleDelete = useCallback(async () => {
+                if (source === 'env') {
+                        dispatchToastMessage({
+                                type: 'error',
+                                message: t('Nicesoft_License_Env_Delete_Not_Allowed'),
+                        });
+                        return;
+                }
+
                 setIsDeleting(true);
                 try {
                         await deleteLicense();
@@ -179,7 +190,7 @@ const NicesoftLicensePage = () => {
                 } finally {
                         setIsDeleting(false);
                 }
-        }, [deleteLicense, dispatchToastMessage, queryClient, resolveToastMessage, t]);
+        }, [deleteLicense, dispatchToastMessage, queryClient, resolveToastMessage, source, t]);
 
         const handleFileUpload = useCallback((event: ChangeEvent<HTMLInputElement>) => {
                 const file = event.currentTarget.files?.[0];
@@ -276,7 +287,7 @@ const NicesoftLicensePage = () => {
                 );
         };
 
-        const isDeleteDisabled = status === 'missing' || source === 'env';
+        const isDeleteDisabled = status === 'missing';
 
         return (
                 <Page>
