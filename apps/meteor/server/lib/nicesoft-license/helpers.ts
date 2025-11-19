@@ -1,25 +1,23 @@
-import type { NicesoftLicenseDocument } from '@rocket.chat/core-typings';
-
 import { getCurrentLicense } from './cache';
 
-const getPayload = (): NicesoftLicenseDocument | undefined => getCurrentLicense().payload;
+const getPayload = () => getCurrentLicense();
 
-export const isLicensed = (): boolean => getCurrentLicense().valid;
+export const isLicensed = (): boolean => getCurrentLicense().status === 'valid';
 
 export const hasFeature = (featureId: string): boolean => {
-	const payload = getPayload();
-	if (!payload?.features?.length) {
-		return false;
-	}
+        const state = getPayload();
+        if (state.status !== 'valid') {
+                return false;
+        }
 
-	return payload.features.includes(featureId);
+        return state.features.includes(featureId);
 };
 
 export const getLimit = (key: string): number | null => {
-	const payload = getPayload();
-	if (!payload?.limits) {
-		return null;
-	}
+        const state = getPayload();
+        if (state.status !== 'valid') {
+                return null;
+        }
 
-	return payload.limits[key] ?? null;
+        return state.limits[key] ?? null;
 };
