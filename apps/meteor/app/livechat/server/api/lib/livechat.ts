@@ -1,5 +1,4 @@
 import type { ILivechatAgent, ILivechatDepartment, ILivechatTrigger, ILivechatVisitor, IOmnichannelRoom } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
 import { EmojiCustom, LivechatTrigger, LivechatVisitors, LivechatRooms, LivechatDepartment } from '@rocket.chat/models';
 import { makeFunction } from '@rocket.chat/patch-injection';
 import { Meteor } from 'meteor/meteor';
@@ -8,10 +7,13 @@ import { callbacks } from '../../../../../lib/callbacks';
 import { i18n } from '../../../../../server/lib/i18n';
 import { normalizeAgent } from '../../lib/Helper';
 import { getInitSettings } from '../../lib/settings';
+import { hasFeature } from '../../../../../server/lib/nicesoft-license';
+
+const OMNICHANNEL_ENTERPRISE_FEATURE = 'omnichannel.enterprise';
 
 async function findTriggers(): Promise<Pick<ILivechatTrigger, '_id' | 'actions' | 'conditions' | 'runOnce'>[]> {
 	const triggers = await LivechatTrigger.findEnabled().toArray();
-	const hasLicense = License.hasModule('livechat-enterprise');
+	const hasLicense = hasFeature(OMNICHANNEL_ENTERPRISE_FEATURE);
 	const premiumActions = ['use-external-service'];
 
 	return triggers
