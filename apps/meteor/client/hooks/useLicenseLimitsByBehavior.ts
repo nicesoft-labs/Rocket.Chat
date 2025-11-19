@@ -1,9 +1,21 @@
 import type { LicenseBehavior, LicenseLimitKind } from '@rocket.chat/core-typings';
-import { validateWarnLimit } from '@rocket.chat/license/src/validation/validateLimit';
 
 import { useLicense } from './useLicense';
 
 type LicenseLimitsByBehavior = Record<LicenseBehavior, LicenseLimitKind[]>;
+
+const validateWarnLimit = (max: number, currentValue: number, behavior: LicenseBehavior, extraCount = 0) => {
+switch (behavior) {
+case 'invalidate_license':
+case 'prevent_installation':
+case 'disable_modules':
+case 'start_fair_policy':
+default:
+return currentValue > max;
+case 'prevent_action':
+return extraCount ? currentValue > max : currentValue >= max;
+}
+};
 
 export const useLicenseLimitsByBehavior = () => {
 	const result = useLicense({ loadValues: true });
