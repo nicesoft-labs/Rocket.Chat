@@ -11,4 +11,8 @@ export const CONSTANTS = {
 
 export const confirmationRequiredPermissions = ['access-permissions'];
 
+export const CE_GUEST_PERMISSIONS = ['view-d-room', 'view-joined-room', 'view-p-room', 'start-discussion'] as const;
+
+export const ADVANCED_GUEST_PERMISSIONS = [...CE_GUEST_PERMISSIONS, 'mobile-upload-file'] as const;
+
 export { AuthorizationUtils } from './AuthorizationUtils';
