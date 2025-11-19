@@ -3,18 +3,51 @@ import type { NicesoftLicenseDocument } from '@rocket.chat/core-typings';
 import { emitLicenseChanged } from './events';
 import { loadLicenseFromStorage, type LicenseStorageResult } from './storage';
 import type { LicenseState } from './types';
+import { validateLicenseDocument } from './validator';
 
 let currentState: LicenseState = {
-valid: false,
-reason,
-payload: undefined,
-source: undefined,
-filePath: undefined,
+        status: 'missing',
+        valid: false,
+        payload: null,
+        features: [],
+        limits: {},
+        reason: null,
+        source: undefined,
+        filePath: undefined,
 };
 
-const buildInvalidState = (reason: string): LicenseState => ({
+const buildInvalidState = (reason: string, source?: LicenseStorageResult['source'], filePath?: string): LicenseState => ({
+        status: 'invalid',
         valid: false,
+        payload: null,
+        features: [],
+        limits: {},
         reason,
+        source,
+        filePath,
+});
+
+const buildMissingState = (): LicenseState => ({
+        ...currentState,
+        status: 'missing',
+        valid: false,
+        payload: null,
+        features: [],
+        limits: {},
+        reason: null,
+        source: undefined,
+        filePath: undefined,
+});
+
+const buildValidState = (document: NicesoftLicenseDocument, source: LicenseStorageResult['source'], filePath?: string): LicenseState => ({
+        status: 'valid',
+        valid: true,
+        payload: document,
+        features: document.features,
+        limits: document.limits,
+        reason: null,
+        source,
+        filePath,
 });
 
 const updateState = (state: LicenseState): void => {
@@ -22,50 +55,27 @@ const updateState = (state: LicenseState): void => {
         emitLicenseChanged(currentState);
 };
 
-const validateLicenseDocument = (payload: unknown): NicesoftLicenseDocument => {
-	if (!payload || typeof payload !== 'object') {
-		throw new Error('License payload is empty');
-	}
-
-	const document = payload as Partial<NicesoftLicenseDocument>;
-	if (!document.product || !document.edition) {
-		throw new Error('License payload is missing required fields');
-	}
-
-	return document as NicesoftLicenseDocument;
-};
-
 export const reloadLicense = async (): Promise<void> => {
-let storageResult: LicenseStorageResult | null = null;
-try {
-storageResult = await loadLicenseFromStorage();
-} catch (error: any) {
-updateState(buildInvalidState(error?.message ?? 'Failed to load license'));
-return;
-}
-
-
-        if (!storageResult) {
-                updateState(buildInvalidState('No license found'));
+        let storageResult: LicenseStorageResult | null = null;
+        try {
+                storageResult = await loadLicenseFromStorage();
+        } catch (error: any) {
+                updateState(buildInvalidState(error?.message ?? 'Failed to load license'));
                 return;
         }
 
-try {
-const payload = JSON.parse(storageResult.content);
-const document = validateLicenseDocument(payload);
-updateState({
-valid: true,
-payload: document,
-source: storageResult.source,
-filePath: storageResult.path,
-});
-} catch (error: any) {
-updateState({
-...buildInvalidState(error?.message ?? 'Invalid license document'),
-source: storageResult.source,
-filePath: storageResult.path,
-});
-}
+        if (!storageResult) {
+                updateState(buildMissingState());
+                return;
+        }
+
+        try {
+                const payload = JSON.parse(storageResult.content);
+                const document = validateLicenseDocument(payload);
+                updateState(buildValidState(document, storageResult.source, storageResult.path));
+        } catch (error: any) {
+                updateState(buildInvalidState(error?.message ?? 'Invalid license document', storageResult.source, storageResult.path));
+        }
 };
 
 export const getCurrentLicense = (): LicenseState => currentState;

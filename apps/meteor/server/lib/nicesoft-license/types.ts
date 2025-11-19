@@ -2,10 +2,15 @@ import type { NicesoftLicenseDocument, NicesoftLicenseSource } from '@rocket.cha
 
 export type { NicesoftLicenseDocument };
 
+export type LicenseStatus = 'missing' | 'invalid' | 'valid';
+
 export interface LicenseState {
-valid: boolean;
-payload?: NicesoftLicenseDocument;
-reason?: string;
-source?: NicesoftLicenseSource;
-filePath?: string;
+        status: LicenseStatus;
+        valid: boolean;
+        payload: NicesoftLicenseDocument | null;
+        features: string[];
+        limits: Record<string, number>;
+        reason: string | null;
+        source?: NicesoftLicenseSource;
+        filePath?: string;
 }
