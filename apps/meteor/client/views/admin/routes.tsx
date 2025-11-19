@@ -131,7 +131,7 @@ component: lazy(() => import('./workspace/WorkspaceRoute')),
 
 registerAdminRoute('/nicesoft-license', {
 name: 'admin-nicesoft-license',
-component: lazy(() => import('./nicesoftLicense/NicesoftLicenseRoute')),
+component: lazy(() => import('../../app/ui-admin/client/views/NicesoftLicensePage/NicesoftLicenseRoute')),
 });
 
 registerAdminRoute('/import', {
