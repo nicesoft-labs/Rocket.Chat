@@ -1,40 +1,25 @@
 import { MeteorError } from '@rocket.chat/core-services';
-import { License, MockedLicenseBuilder } from '@rocket.chat/license';
 
 import { validateUserRoles } from './validateUserRoles';
+import { isActiveUsersLimitReached, isGuestUsersLimitReached } from '../../../../server/lib/nicesoft-license';
 
-beforeEach(async () => {
-	const license = new MockedLicenseBuilder();
-	await License.setWorkspaceUrl('http://localhost:3000');
-	License.setLicenseLimitCounter('activeUsers', () => 0);
-	License.setLicenseLimitCounter('guestUsers', () => 0);
-	License.setLicenseLimitCounter('roomsPerGuest', async () => 0);
-	License.setLicenseLimitCounter('privateApps', () => 0);
-	License.setLicenseLimitCounter('marketplaceApps', () => 0);
-	License.setLicenseLimitCounter('monthlyActiveContacts', async () => 0);
+jest.mock('../../../../server/lib/nicesoft-license', () => ({
+	__esModule: true,
+	isActiveUsersLimitReached: jest.fn(),
+	isGuestUsersLimitReached: jest.fn(),
+}));
 
-	License.setLicenseLimitCounter('activeUsers', () => 1);
+const isActiveUsersLimitReachedMock = isActiveUsersLimitReached as jest.MockedFunction<typeof isActiveUsersLimitReached>;
+const isGuestUsersLimitReachedMock = isGuestUsersLimitReached as jest.MockedFunction<typeof isGuestUsersLimitReached>;
 
-	license
-		.withLimits('activeUsers', [
-			{
-				max: 1,
-				behavior: 'prevent_action',
-			},
-		])
-		.withLimits('guestUsers', [
-			{
-				max: 1,
-				behavior: 'prevent_action',
-			},
-		]);
-
-	await License.setLicense(await license.sign());
+beforeEach(() => {
+	isActiveUsersLimitReachedMock.mockResolvedValue(false);
+	isGuestUsersLimitReachedMock.mockResolvedValue(false); 
 });
 
 describe('Operating after activeUsers Limits', () => {
-	beforeEach(async () => {
-		License.setLicenseLimitCounter('activeUsers', () => 1);
+	beforeEach(() => {
+		isActiveUsersLimitReachedMock.mockResolvedValue(true);
 	});
 
 	describe('Adding a new user', () => {
@@ -93,13 +78,6 @@ describe('Operating after activeUsers Limits', () => {
 	});
 
 	describe('Editing an existing user', () => {
-		beforeEach(async () => {
-			License.setLicenseLimitCounter('guestUsers', () => 1);
-		});
-		afterEach(async () => {
-			License.setLicenseLimitCounter('guestUsers', () => 0);
-		});
-
 		it('should throw an error when we try to activate a user', async () => {
 			const user = {
 				active: true,
@@ -124,7 +102,21 @@ describe('Operating after activeUsers Limits', () => {
 			await expect(validateUserRoles(user, currentUser)).resolves.not.toThrow();
 		});
 
-		it('should not throw an error when we try to change an active user', async () => {
+		it('should not throw an error when we try to edit a guest', async () => {
+			const user = {
+				active: true,
+				type: 'user',
+				roles: ['guest'],
+			};
+			const currentUser = {
+				active: true,
+				type: 'user',
+				roles: ['guest'],
+			};
+			await expect(validateUserRoles(user, currentUser)).resolves.not.toThrow();
+		});
+
+		it('should throw an error when we try to convert a guest to a user', async () => {
 			const user = {
 				active: true,
 				type: 'user',
@@ -132,8 +124,9 @@ describe('Operating after activeUsers Limits', () => {
 			const currentUser = {
 				active: true,
 				type: 'user',
+				roles: ['guest'],
 			};
-			await expect(validateUserRoles(user, currentUser)).resolves.not.toThrow();
+			await expect(validateUserRoles(user, currentUser)).rejects.toThrow(MeteorError);
 		});
 
 		it('should throw an error when we try to convert a bot to a user', async () => {
@@ -147,12 +140,24 @@ describe('Operating after activeUsers Limits', () => {
 			};
 			await expect(validateUserRoles(user, currentUser)).rejects.toThrow(MeteorError);
 		});
+
+		it('should throw an error when we try to convert an app to a user', async () => {
+			const user = {
+				active: true,
+				type: 'user',
+			};
+			const currentUser = {
+				active: true,
+				type: 'app',
+			};
+			await expect(validateUserRoles(user, currentUser)).rejects.toThrow(MeteorError);
+		});
 	});
 });
 
 describe('Operating after guestUsers Limits', () => {
-	beforeEach(async () => {
-		License.setLicenseLimitCounter('guestUsers', () => 1);
+	beforeEach(() => {
+		isGuestUsersLimitReachedMock.mockResolvedValue(true);
 	});
 
 	it('should throw an error when we try to convert an user to guest', async () => {
@@ -197,8 +202,8 @@ describe('Operating after guestUsers Limits', () => {
 });
 
 describe('Operating under activeUsers Limits', () => {
-	beforeEach(async () => {
-		License.setLicenseLimitCounter('activeUsers', () => 0);
+	beforeEach(() => {
+		isActiveUsersLimitReachedMock.mockResolvedValue(false);
 	});
 
 	describe('Adding a new user', () => {
