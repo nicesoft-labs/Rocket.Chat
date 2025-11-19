@@ -5092,6 +5092,7 @@
   "Nicesoft_License_Source": "Источник",
   "Nicesoft_License_Source_Unknown": "Источник лицензии не найден",
   "Nicesoft_License_Source_Env": "Переменная окружения",
+  "Nicesoft_License_Source_DB": "База данных",
   "Nicesoft_License_Source_File": "Файл лицензии",
   "Nicesoft_License_Edition": "Редакция",
   "Nicesoft_License_Tenant": "Тенант",

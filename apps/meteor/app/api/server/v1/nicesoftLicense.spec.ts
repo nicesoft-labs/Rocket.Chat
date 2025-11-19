@@ -29,6 +29,7 @@ jest.mock('../../../../server/lib/nicesoft-license/events', () => ({
 const { reloadLicense, getCurrentLicense } = jest.requireMock('../../../../server/lib/nicesoft-license');
 const { persistLicenseToFile, removeLicenseFile } = jest.requireMock('../../../../server/lib/nicesoft-license/storage');
 const { streamAll } = jest.requireMock('../../../notifications/server/lib/Notifications');
+const { emitLicenseUpdated } = jest.requireMock('../../../../server/lib/nicesoft-license/events');
 
 describe('nicesoft license API helpers', () => {
         const validDocument = {
@@ -39,6 +40,17 @@ describe('nicesoft license API helpers', () => {
                 valid_to: '2999-01-01T00:00:00.000Z',
                 features: ['a', 'b'],
                 limits: { users: 10 },
+        };
+
+        const validState: LicenseState = {
+                status: 'valid',
+                valid: true,
+                payload: validDocument,
+                features: validDocument.features,
+                limits: validDocument.limits,
+                reason: null,
+                source: 'file',
+                filePath: '/tmp/license.json',
         };
 
         beforeEach(() => {
@@ -69,6 +81,8 @@ describe('nicesoft license API helpers', () => {
                                 expiresAt: null,
                                 edition: null,
                                 tenant: null,
+                                features: [],
+                                limits: {},
                         }),
                 );
         });
@@ -94,18 +108,7 @@ describe('nicesoft license API helpers', () => {
         });
 
         it('buildLicenseInfoResponse returns valid state with computed expiration', () => {
-                const state: LicenseState = {
-                        status: 'valid',
-                        valid: true,
-                        payload: validDocument,
-                        features: validDocument.features,
-                        limits: validDocument.limits,
-                        reason: null,
-                        source: 'file',
-                        filePath: '/tmp/license.json',
-                };
-
-                getCurrentLicense.mockReturnValue(state);
+                getCurrentLicense.mockReturnValue(validState);
 
                 const result = buildLicenseInfoResponse();
                 expect(result.status).toBe('valid');
@@ -117,27 +120,31 @@ describe('nicesoft license API helpers', () => {
         });
 
         it('normalizeLicenseDocument throws on invalid JSON', () => {
-                expect(() => normalizeLicenseDocument('not-json')).toThrowError(Meteor.Error);
+                expect(() => normalizeLicenseDocument('not-json')).toThrowError(new Meteor.Error('error-invalid-license-json'));
+        });
+
+        it('normalizeLicenseDocument throws on invalid schema', () => {
+                expect(() => normalizeLicenseDocument({ product: 'only-product' })).toThrowError(
+                        new Meteor.Error('error-invalid-license-schema'),
+                );
         });
 
         it('handleLicenseUpload persists, reloads and broadcasts', async () => {
-                getCurrentLicense.mockReturnValue({
-                        status: 'valid',
-                        valid: true,
-                        payload: validDocument,
-                        features: validDocument.features,
-                        limits: validDocument.limits,
-                        reason: null,
-                        source: 'file',
-                        filePath: '/tmp/license.json',
-                } satisfies LicenseState);
+                getCurrentLicense.mockReturnValue(validState);
 
                 const response = await handleLicenseUpload({ license: validDocument });
 
-                expect(persistLicenseToFile).toHaveBeenCalledTimes(1);
+                expect(persistLicenseToFile).toHaveBeenCalledWith(expect.stringContaining('rocket'));
                 expect(reloadLicense).toHaveBeenCalledTimes(1);
                 expect(streamAll.emit).toHaveBeenCalledWith('licenseUpdated', response);
+                expect(emitLicenseUpdated).toHaveBeenCalledWith(validState);
                 expect(response.status).toBe('valid');
+        });
+
+        it('handleLicenseUpload rejects invalid JSON payloads', async () => {
+                await expect(handleLicenseUpload('broken-json')).rejects.toThrow(
+                        new Meteor.Error('error-invalid-license-json'),
+                );
         });
 
         it('handleLicenseDelete removes license and marks missing', async () => {
@@ -156,6 +163,7 @@ describe('nicesoft license API helpers', () => {
 
                 expect(removeLicenseFile).toHaveBeenCalledTimes(1);
                 expect(reloadLicense).toHaveBeenCalledTimes(1);
+                expect(streamAll.emit).toHaveBeenCalledWith('licenseUpdated', response);
                 expect(response.status).toBe('missing');
         });
 });

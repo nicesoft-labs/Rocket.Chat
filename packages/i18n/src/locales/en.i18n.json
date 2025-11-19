@@ -7108,6 +7108,7 @@
   "Nicesoft_License_Source": "Source",
   "Nicesoft_License_Source_Unknown": "No license source detected",
   "Nicesoft_License_Source_Env": "Environment variable",
+  "Nicesoft_License_Source_DB": "Database",
   "Nicesoft_License_Source_File": "License file",
   "Nicesoft_License_Edition": "Edition",
   "Nicesoft_License_Tenant": "Tenant",
