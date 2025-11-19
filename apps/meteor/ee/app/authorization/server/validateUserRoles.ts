@@ -1,8 +1,8 @@
 import { MeteorError } from '@rocket.chat/core-services';
 import type { IUser } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
 
 import { i18n } from '../../../../server/lib/i18n';
+import { isActiveUsersLimitReached, isGuestUsersLimitReached } from '../../../../server/lib/nicesoft-license';
 
 export async function validateUserRoles(userData: Partial<IUser>, currentUserData?: Partial<IUser>) {
 	const isApp = Boolean(userData.type === 'app');
@@ -22,12 +22,12 @@ export async function validateUserRoles(userData: Partial<IUser>, currentUserDat
 		return;
 	}
 
-	if (hasGuestToChanged && (await License.shouldPreventAction('guestUsers'))) {
-		throw new MeteorError('error-max-guests-number-reached', 'Maximum number of guests reached.', {
-			method: 'insertOrUpdateUser',
-			field: 'Assign_role',
-		});
-	}
+if (hasGuestToChanged && (await isGuestUsersLimitReached())) {
+throw new MeteorError('error-max-guests-number-reached', 'Maximum number of guests reached.', {
+method: 'insertOrUpdateUser',
+field: 'Assign_role',
+});
+}
 
 	if (isGuest) {
 		return;
@@ -46,7 +46,7 @@ export async function validateUserRoles(userData: Partial<IUser>, currentUserDat
 		return;
 	}
 
-	if (await License.shouldPreventAction('activeUsers')) {
-		throw new MeteorError('error-license-user-limit-reached', i18n.t('error-license-user-limit-reached'));
-	}
+if (await isActiveUsersLimitReached()) {
+throw new MeteorError('error-license-user-limit-reached', i18n.t('error-license-user-limit-reached'));
+}
 }
