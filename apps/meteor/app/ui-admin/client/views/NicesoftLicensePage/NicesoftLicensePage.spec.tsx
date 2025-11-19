@@ -5,13 +5,40 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import NicesoftLicensePage from './NicesoftLicensePage';
 
+const translations: Record<string, string> = {
+        Nicesoft_License_Status_Missing: 'No license installed',
+        Nicesoft_License_Status_Invalid: 'License is invalid',
+        Nicesoft_License_Status_Licensed: 'License is active',
+        Nicesoft_License_Status_Reason: 'Details',
+        Nicesoft_License_Status_Invalid_Description: 'We detected a license, but it could not be verified.',
+        Nicesoft_License_Status_Licensed_Description:
+                'Your workspace is currently licensed and all Nicesoft features are available.',
+        Nicesoft_License_Status_Missing_Description: 'Upload a valid Nicesoft license to unlock the full experience.',
+        Nicesoft_License_Delete: 'Delete license',
+        Nicesoft_License_Delete_Success: 'License removed successfully',
+        Nicesoft_License_Delete_Error: 'Could not delete the license',
+        Nicesoft_License_Upload_Success: 'License uploaded successfully',
+        Nicesoft_License_Error_Invalid_Schema: 'License format is invalid',
+        Nicesoft_License_Error_Invalid_Signature: 'License signature could not be verified',
+        Nicesoft_License_Load_Failed: 'Unable to load the current license',
+        Nicesoft_License_Paste_Placeholder: 'Paste the raw JSON or base64-encoded license document here',
+        Nicesoft_License_Submit: 'Upload license',
+        Nicesoft_License_Source: 'Source',
+        Nicesoft_License_Source_Env: 'Environment variable',
+        Nicesoft_License_Env_Delete_Not_Allowed:
+                'This license is provided via environment variables and cannot be deleted via the UI.',
+        Refresh: 'Refresh',
+};
+
 jest.mock('@rocket.chat/ui-contexts', () => ({
         useTranslation: () => (key: string, params?: Record<string, any>) => {
-                if (params?.count) {
-                        return `${key}:${params.count}`;
+                const value = translations[key];
+
+                if (typeof params?.count === 'number' && value?.includes('{{count}}')) {
+                        return value.replace('{{count}}', String(params.count));
                 }
 
-                return key;
+                return value ?? key;
         },
         useToastMessageDispatch: () => jest.fn(),
         useEndpoint: jest.fn(),
@@ -110,7 +137,7 @@ describe('NicesoftLicensePage', () => {
 
                 renderWithClient(<NicesoftLicensePage />);
 
-                expect(await screen.findByText('Nicesoft_License_Status_Missing')).toBeInTheDocument();
+                expect(await screen.findByText(translations.Nicesoft_License_Status_Missing)).toBeInTheDocument();
         });
 
         it('renders invalid reason', async () => {
@@ -154,15 +181,15 @@ describe('NicesoftLicensePage', () => {
 
                 renderWithClient(<NicesoftLicensePage />);
 
-                const textarea = await screen.findByPlaceholderText('Nicesoft_License_Paste_Placeholder');
+                const textarea = await screen.findByPlaceholderText(translations.Nicesoft_License_Paste_Placeholder);
                 fireEvent.change(textarea, { target: { value: '{"license":true}' } });
-                fireEvent.click(screen.getByText('Nicesoft_License_Submit'));
+                fireEvent.click(screen.getByText(translations.Nicesoft_License_Submit));
 
                 await waitFor(() => expect(uploadMock).toHaveBeenCalled());
                 const toast = mockToast.mock.results[0].value as jest.Mock;
                 expect(toast).toHaveBeenCalledWith({
                         type: 'success',
-                        message: 'Nicesoft_License_Upload_Success',
+                        message: translations.Nicesoft_License_Upload_Success,
                 });
         });
 
@@ -177,14 +204,60 @@ describe('NicesoftLicensePage', () => {
 
                 renderWithClient(<NicesoftLicensePage />);
 
-                fireEvent.click(await screen.findByText('Nicesoft_License_Delete'));
+                fireEvent.click(await screen.findByText(translations.Nicesoft_License_Delete));
                 await waitFor(() => expect(deleteMock).toHaveBeenCalled());
 
                 const toast = mockToast.mock.results[0].value as jest.Mock;
                 expect(toast).toHaveBeenCalledWith({
                         type: 'success',
-                        message: 'Nicesoft_License_Delete_Success',
+                        message: translations.Nicesoft_License_Delete_Success,
                 });
+        });
+
+        it('shows toast and skips API when source is env', async () => {
+                const { deleteMock } = setupEndpoints({
+                        status: 'valid',
+                        source: 'env',
+                        reason: null,
+                        expires_in: null,
+                        payload: { ...basePayload, features: [], limits: {} },
+                });
+
+                renderWithClient(<NicesoftLicensePage />);
+
+                fireEvent.click(await screen.findByText(translations.Nicesoft_License_Delete));
+
+                const toast = mockToast.mock.results[0].value as jest.Mock;
+                expect(toast).toHaveBeenCalledWith({
+                        type: 'error',
+                        message: translations.Nicesoft_License_Env_Delete_Not_Allowed,
+                });
+                expect(deleteMock).not.toHaveBeenCalled();
+        });
+
+        it('handles license-env-readonly error from API', async () => {
+                const { deleteMock } = setupEndpoints({
+                        status: 'valid',
+                        source: 'file',
+                        reason: null,
+                        expires_in: null,
+                        payload: basePayload,
+                });
+
+                deleteMock.mockRejectedValue(new Error('license-env-readonly'));
+
+                renderWithClient(<NicesoftLicensePage />);
+
+                fireEvent.click(await screen.findByText(translations.Nicesoft_License_Delete));
+                await waitFor(() => expect(deleteMock).toHaveBeenCalled());
+
+                const toast = mockToast.mock.results[0].value as jest.Mock;
+                expect(toast).toHaveBeenCalledWith({
+                        type: 'error',
+                        message: translations.Nicesoft_License_Env_Delete_Not_Allowed,
+                });
+
+                expect(screen.getByText('rocket')).toBeInTheDocument();
         });
 
         it('shows schema error toast on upload failure', async () => {
@@ -199,15 +272,15 @@ describe('NicesoftLicensePage', () => {
                 uploadMock.mockRejectedValue(new Error('invalid-license-schema'));
 
                 renderWithClient(<NicesoftLicensePage />);
-                const textarea = await screen.findByPlaceholderText('Nicesoft_License_Paste_Placeholder');
+                const textarea = await screen.findByPlaceholderText(translations.Nicesoft_License_Paste_Placeholder);
                 fireEvent.change(textarea, { target: { value: '{"license":true}' } });
-                fireEvent.click(screen.getByText('Nicesoft_License_Submit'));
+                fireEvent.click(screen.getByText(translations.Nicesoft_License_Submit));
 
                 await waitFor(() => expect(uploadMock).toHaveBeenCalled());
                 const toast = mockToast.mock.results[0].value as jest.Mock;
                 expect(toast).toHaveBeenCalledWith({
                         type: 'error',
-                        message: 'Nicesoft_License_Error_Invalid_Schema',
+                        message: translations.Nicesoft_License_Error_Invalid_Schema,
                 });
         });
 
@@ -223,15 +296,15 @@ describe('NicesoftLicensePage', () => {
                 uploadMock.mockRejectedValue(new Error('invalid-license-signature'));
 
                 renderWithClient(<NicesoftLicensePage />);
-                const textarea = await screen.findByPlaceholderText('Nicesoft_License_Paste_Placeholder');
+                const textarea = await screen.findByPlaceholderText(translations.Nicesoft_License_Paste_Placeholder);
                 fireEvent.change(textarea, { target: { value: '{"license":true}' } });
-                fireEvent.click(screen.getByText('Nicesoft_License_Submit'));
+                fireEvent.click(screen.getByText(translations.Nicesoft_License_Submit));
 
                 await waitFor(() => expect(uploadMock).toHaveBeenCalled());
                 const toast = mockToast.mock.results[0].value as jest.Mock;
                 expect(toast).toHaveBeenCalledWith({
                         type: 'error',
-                        message: 'Nicesoft_License_Error_Invalid_Signature',
+                        message: translations.Nicesoft_License_Error_Invalid_Signature,
                 });
         });
 
@@ -249,7 +322,12 @@ describe('NicesoftLicensePage', () => {
                 renderWithClient(<NicesoftLicensePage />);
 
                 const toast = mockToast.mock.results[0].value as jest.Mock;
-                await waitFor(() => expect(toast).toHaveBeenCalledWith({ type: 'error', message: 'Nicesoft_License_Load_Failed' }));
+                await waitFor(() =>
+                        expect(toast).toHaveBeenCalledWith({
+                                type: 'error',
+                                message: translations.Nicesoft_License_Load_Failed,
+                        }),
+                );
         });
 
         it('listens to licenseUpdated stream and refetches', async () => {
@@ -293,7 +371,7 @@ describe('NicesoftLicensePage', () => {
                 });
 
                 renderWithClient(<NicesoftLicensePage />);
-                expect(await screen.findByText('Nicesoft_License_Status_Missing')).toBeInTheDocument();
+                expect(await screen.findByText(translations.Nicesoft_License_Status_Missing)).toBeInTheDocument();
 
                 await act(async () => {
                         streamCallback?.();

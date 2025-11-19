@@ -146,18 +146,15 @@ const handleLicenseDelete = async (): Promise<NicesoftLicenseInfoResult> => {
 
         await reloadLicense();
         const state = getCurrentLicense();
-        const responseState =
-                state.source === 'env'
-                        ? {
-                                  ...state,
-                                  reason:
-                                          state.reason ??
-                                          'License loaded from environment and cannot be removed through the API',
-                          }
-                        : state;
-        broadcastLicenseUpdated(responseState);
+        if (state.source === 'env') {
+                throw new Meteor.Error('license-env-readonly', 'License loaded from environment and cannot be removed', {
+                        source: 'env',
+                });
+        }
 
-        return buildLicenseInfoResponse(responseState);
+        broadcastLicenseUpdated(state);
+
+        return buildLicenseInfoResponse(state);
 };
 
 API.v1.addRoute(
