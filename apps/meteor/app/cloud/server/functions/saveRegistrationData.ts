@@ -1,7 +1,7 @@
-import { applyLicense } from '@rocket.chat/license';
 import { Settings } from '@rocket.chat/models';
 
 import { syncCloudData } from './syncWorkspace/syncCloudData';
+import { callbacks } from '../../../../lib/callbacks';
 import { updateAuditedBySystem } from '../../../../server/settings/lib/auditedSettingUpdates';
 import { notifyOnSettingChangedById } from '../../../lib/server/lib/notifyListener';
 import { settings } from '../../../settings/server';
@@ -120,5 +120,5 @@ export async function saveRegistrationDataManual({
 		publicKey,
 		registration_client_uri,
 	});
-	await applyLicense(licenseData.license, true);
+await callbacks.run('workspaceLicenseChanged', licenseData.license);
 }
