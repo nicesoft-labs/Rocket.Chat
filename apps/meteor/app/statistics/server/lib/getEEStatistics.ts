@@ -1,11 +1,9 @@
-import { log } from 'console';
-
 import { Analytics } from '@rocket.chat/core-services';
 import type { IStats } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
 import { CannedResponse, OmnichannelServiceLevelAgreements, LivechatRooms, LivechatTag, LivechatUnit, Users } from '@rocket.chat/models';
 
 import { getVoIPStatistics } from './getVoIPStatistics';
+import { getCurrentLicense, hasFeature } from '../../../../server/lib/nicesoft-license';
 
 type ENTERPRISE_STATISTICS = IStats['enterprise'];
 
@@ -14,11 +12,13 @@ type GenericStats = Pick<ENTERPRISE_STATISTICS, 'modules' | 'tags' | 'seatReques
 type EEOnlyStats = Omit<ENTERPRISE_STATISTICS, keyof GenericStats>;
 
 export async function getStatistics(): Promise<ENTERPRISE_STATISTICS> {
-	const genericStats: GenericStats = {
-		modules: License.getModules(),
-		tags: License.getTags().map(({ name }) => name),
-		seatRequests: await Analytics.getSeatRequestCount(),
-	};
+const licenseState = getCurrentLicense();
+const licensePayload = licenseState.payload ?? {};
+const genericStats: GenericStats = {
+modules: licensePayload.features ?? [],
+tags: [],
+seatRequests: await Analytics.getSeatRequestCount(),
+};
 
 	const eeModelsStats = await getEEStatistics();
 
@@ -31,7 +31,7 @@ export async function getStatistics(): Promise<ENTERPRISE_STATISTICS> {
 }
 
 async function getEEStatistics(): Promise<EEOnlyStats | undefined> {
-	if (!License.hasModule('livechat-enterprise')) {
+	if (!hasFeature(OMNICHANNEL_ENTERPRISE_FEATURE)) {
 		return;
 	}
 
@@ -109,7 +109,7 @@ async function getEEStatistics(): Promise<EEOnlyStats | undefined> {
 		}),
 	);
 
-	await Promise.all(statsPms).catch(log);
+	await Promise.all(statsPms).catch(console.log);
 
 	return statistics as EEOnlyStats;
 }
