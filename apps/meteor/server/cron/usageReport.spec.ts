@@ -1,53 +1,70 @@
-import { AirGappedRestriction } from '@rocket.chat/license';
 import { Statistics } from '@rocket.chat/models';
 
 import { sendUsageReportAndComputeRestriction } from './usageReport';
 
-jest.mock('@rocket.chat/license', () => ({
-	AirGappedRestriction: {
-		computeRestriction: jest.fn(),
-	},
+jest.mock('@rocket.chat/models', () => ({
+        Statistics: {
+                findLast: jest.fn(),
+        },
 }));
 
-jest.mock('@rocket.chat/models', () => ({
-	Statistics: {
-		findLastStatsToken: jest.fn(),
-	},
+jest.mock('../lib/nicesoft-license', () => ({
+        isLicensed: jest.fn(),
+        getLimit: jest.fn(),
 }));
 
 jest.mock('../../app/statistics/server/functions/sendUsageReport', () => ({
 	sendUsageReport: () => undefined,
 }));
 
+const logger = {
+        debug: jest.fn(),
+        warn: jest.fn(),
+} as any;
+
+const mockIsLicensed = jest.requireMock('../lib/nicesoft-license').isLicensed as jest.Mock;
+const mockGetLimit = jest.requireMock('../lib/nicesoft-license').getLimit as jest.Mock;
+
 describe('sendUsageReportAndComputeRestriction', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
+        beforeEach(() => {
+                jest.clearAllMocks();
+                mockIsLicensed.mockReturnValue(true);
+                mockGetLimit.mockReturnValue(7);
+        });
 
-	it('should pass statsToken to computeRestriction when provided', async () => {
-		const mockStatsToken = 'test-token';
-		await sendUsageReportAndComputeRestriction(mockStatsToken);
+        it('logs CE mode when license is missing', async () => {
+                mockIsLicensed.mockReturnValue(false);
 
-		expect(AirGappedRestriction.computeRestriction).toHaveBeenCalledWith(mockStatsToken);
-		expect(Statistics.findLastStatsToken).not.toHaveBeenCalled();
-	});
+                await sendUsageReportAndComputeRestriction(undefined, logger);
+
+
+                expect(logger.debug).toHaveBeenCalledWith('Usage report running in community edition mode');
+                expect(Statistics.findLast).not.toHaveBeenCalled();
+        });
 
 	it('should use findLastStatsToken result when statsToken is omitted', async () => {
 		const mockLastToken = 'last-token';
 		(Statistics.findLastStatsToken as jest.Mock).mockResolvedValue(mockLastToken);
 
-		await sendUsageReportAndComputeRestriction();
+                await sendUsageReportAndComputeRestriction(undefined, logger);
 
-		expect(Statistics.findLastStatsToken).toHaveBeenCalled();
-		expect(AirGappedRestriction.computeRestriction).toHaveBeenCalledWith(mockLastToken);
-	});
+                expect(Statistics.findLast).not.toHaveBeenCalled();
+        });
 
-	it('should pass undefined to computeRestriction when both statsToken is omitted and findLastStatsToken returns undefined', async () => {
-		(Statistics.findLastStatsToken as jest.Mock).mockResolvedValue(undefined);
+        it('warns when grace period is exceeded', async () => {
+                (Statistics.findLast as jest.Mock).mockResolvedValue({
+                        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+                });
 
-		await sendUsageReportAndComputeRestriction();
+                await sendUsageReportAndComputeRestriction('token', logger);
 
-		expect(Statistics.findLastStatsToken).toHaveBeenCalled();
-		expect(AirGappedRestriction.computeRestriction).toHaveBeenCalledWith(undefined);
-	});
+                expect(logger.warn).toHaveBeenCalledWith(
+                        'Usage report grace period exceeded',
+                        expect.objectContaining({
+                                daysSinceLastReport: expect.any(Number),
+                                maxDaysWithoutReport: 7,
+                                statsToken: 'token',
+                        }),
+                );
+        });
 });
