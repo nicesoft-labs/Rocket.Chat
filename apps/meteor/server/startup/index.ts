@@ -11,11 +11,15 @@ import '../lib/rooms/roomTypes';
 import '../lib/settingsRegenerator';
 import { performMigrationProcedure } from './migrations';
 import { isRunningMs } from '../lib/isRunningMs';
+import { reloadLicense } from '../lib/nicesoft-license';
+
 
 export const startup = async () => {
-	await performMigrationProcedure();
+await performMigrationProcedure();
 
-	await generateFederationKeys();
+await reloadLicense();
+
+await generateFederationKeys();
 
 	setImmediate(() => startCronJobs());
 	// only starts network broker if running in micro services mode
