@@ -1,11 +1,11 @@
 import { api } from '@rocket.chat/core-services';
 import type { IUser, IRole, AtLeast } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
 import { Users } from '@rocket.chat/models';
 
 import { settings } from '../../../app/settings/server';
 import { addUserRolesAsync } from '../../../server/lib/roles/addUserRoles';
 import { removeUserFromRolesAsync } from '../../../server/lib/roles/removeUserFromRoles';
+import { isActiveUsersLimitReached } from '../../../server/lib/nicesoft-license';
 
 type setUserRolesOptions = {
 	// If specified, the function will not add nor remove any role that is not on this list.
@@ -71,10 +71,10 @@ export async function syncUserRoles(
 		return;
 	}
 
-	const wasGuest = existingRoles.length === 1 && existingRoles[0] === 'guest';
-	if (wasGuest && (await License.shouldPreventAction('activeUsers'))) {
-		throw new Error('error-license-user-limit-reached');
-	}
+const wasGuest = existingRoles.length === 1 && existingRoles[0] === 'guest';
+if (wasGuest && (await isActiveUsersLimitReached())) {
+throw new Error('error-license-user-limit-reached');
+}
 
 	if (rolesToAdd.length && (await addUserRolesAsync(uid, rolesToAdd, scope))) {
 		broadcastRoleChange('added', rolesToAdd, user);
