@@ -1,7 +1,10 @@
 import { Federation, FederationEE, Authorization } from '@rocket.chat/core-services';
 import type { ServerMethods } from '@rocket.chat/ddp-client';
-import { License } from '@rocket.chat/license';
 import { Meteor } from 'meteor/meteor';
+
+import { hasFeature } from '../../../../server/lib/nicesoft-license';
+
+const FEDERATION_EE_FEATURE = 'federation.enterprise';
 
 declare module '@rocket.chat/ddp-client' {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -30,7 +33,7 @@ Meteor.methods<ServerMethods>({
 
 		const successes: string[] = [];
 
-		const service = License.hasValidLicense() ? FederationEE : Federation;
+		const service = hasFeature(FEDERATION_EE_FEATURE) ? FederationEE : Federation;
 
 		const status = await service.configurationStatus();
 
