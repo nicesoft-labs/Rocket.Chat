@@ -39,7 +39,7 @@ const models = {
 };
 
 const license = {
-	shouldPreventAction: Sinon.stub(),
+        shouldPreventAction: Sinon.stub(),
 };
 
 const { OmnichannelQueue } = p.noCallThru().load('../../../../../server/services/omnichannel/queue', {
@@ -55,8 +55,8 @@ const { OmnichannelQueue } = p.noCallThru().load('../../../../../server/services
 	'../../../app/livechat/server/lib/settings': libSettings,
 	'../../../app/settings/server': { settings },
 	'./logger': { queueLogger },
-	'@rocket.chat/models': models,
-	'@rocket.chat/license': { License: license },
+        '@rocket.chat/models': models,
+        '../../lib/nicesoft-license': { shouldPreventAction: license.shouldPreventAction },
 	'../../../app/metrics/server': {
 		metrics: {
 			timeToQueueProcessingByQueue: { observe: Sinon.stub() },
