@@ -1,7 +1,7 @@
 export { reloadLicense, getCurrentLicense } from './cache';
 export { isLicensed, hasFeature, getLimit } from './helpers';
 export { loadLicenseFromStorage, readLicenseFromEnv, readLicenseFromFile, getLicenseFilePath } from './storage';
-export { validateLicenseDocument } from './validator';
+export { validateLicenseDocument, parseLicensePayload, LicenseValidationError } from './validator';
 export {
         getActiveUsersLimitInfo,
         getGuestUsersLimitInfo,

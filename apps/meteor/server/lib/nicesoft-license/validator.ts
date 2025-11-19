@@ -1,5 +1,15 @@
 import type { NicesoftLicenseDocument } from '@rocket.chat/core-typings';
 
+export class LicenseValidationError extends Error {
+        constructor(
+                message: string,
+                public readonly kind: 'json' | 'schema',
+        ) {
+                super(message);
+                this.name = 'LicenseValidationError';
+        }
+}
+
 const isValidDate = (value: unknown): value is string => {
         if (typeof value !== 'string') {
                 return false;
@@ -52,7 +62,7 @@ const assertValidDateRange = (from: string, to: string): void => {
 
 export const validateLicenseDocument = (payload: unknown): NicesoftLicenseDocument => {
         if (!payload || typeof payload !== 'object') {
-                throw new Error('License payload is empty');
+                throw new LicenseValidationError('License payload is empty', 'json');
         }
 
         const document = payload as Partial<NicesoftLicenseDocument>;
@@ -76,5 +86,36 @@ export const validateLicenseDocument = (payload: unknown): NicesoftLicenseDocume
                 features,
                 limits,
         } as NicesoftLicenseDocument;
+};
+
+const decodeJsonString = (raw: string): unknown => {
+        try {
+                return JSON.parse(raw);
+        } catch (error) {
+                try {
+                        const decoded = Buffer.from(raw, 'base64').toString('utf-8');
+                        return JSON.parse(decoded);
+                } catch (err) {
+                        throw new LicenseValidationError('Invalid license JSON', 'json');
+                }
+        }
+};
+
+export const parseLicensePayload = (payload: unknown): NicesoftLicenseDocument => {
+        if (payload === undefined || payload === null) {
+                throw new LicenseValidationError('License payload is required', 'json');
+        }
+
+        const parsedPayload = typeof payload === 'string' ? decodeJsonString(payload) : payload;
+
+        try {
+                return validateLicenseDocument(parsedPayload);
+        } catch (error: any) {
+                if (error instanceof LicenseValidationError) {
+                        throw error;
+                }
+
+                throw new LicenseValidationError(error?.message ?? 'Invalid license payload', 'schema');
+        }
 };
 

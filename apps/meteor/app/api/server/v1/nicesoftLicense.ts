@@ -3,7 +3,7 @@ import { Meteor } from 'meteor/meteor';
 import { API } from '../api';
 import { reloadLicense, getCurrentLicense } from '../../../../server/lib/nicesoft-license';
 import type { LicenseState } from '../../../../server/lib/nicesoft-license/types';
-import { validateLicenseDocument } from '../../../../server/lib/nicesoft-license/validator';
+import { LicenseValidationError, parseLicensePayload } from '../../../../server/lib/nicesoft-license/validator';
 import { persistLicenseToFile, removeLicenseFile } from '../../../../server/lib/nicesoft-license/storage';
 import { emitLicenseUpdated } from '../../../../server/lib/nicesoft-license/events';
 import notifications from '../../../notifications/server/lib/Notifications';
@@ -43,19 +43,6 @@ const broadcastLicenseUpdated = (state: LicenseState): void => {
         notifications.streamAll.emit('licenseUpdated', payload);
 };
 
-const decodeJsonString = (raw: string): unknown => {
-        try {
-                return JSON.parse(raw);
-        } catch (error) {
-                try {
-                        const decoded = Buffer.from(raw, 'base64').toString('utf-8');
-                        return JSON.parse(decoded);
-                } catch (err) {
-                        throw new Meteor.Error('error-invalid-license-json', 'Invalid license JSON');
-                }
-        }
-};
-
 const extractLicensePayload = async (bodyParams: unknown, request?: Request): Promise<unknown> => {
         if (bodyParams && typeof bodyParams === 'object' && 'license' in (bodyParams as Record<string, any>)) {
                 return (bodyParams as Record<string, any>).license;
@@ -76,14 +63,18 @@ const extractLicensePayload = async (bodyParams: unknown, request?: Request): Pr
 };
 
 const normalizeLicenseDocument = (payload: unknown) => {
-        const parsedPayload = typeof payload === 'string' ? decodeJsonString(payload) : payload;
-
         try {
-                const document = validateLicenseDocument(parsedPayload);
+                const document = parseLicensePayload(payload);
                 const serialized = JSON.stringify(document, null, 2);
                 return { document, serialized };
         } catch (error: any) {
-                throw new Meteor.Error('error-invalid-license-schema', error?.message ?? 'Invalid license payload');
+                if (error instanceof LicenseValidationError) {
+                        const code =
+                                error.kind === 'json' ? 'error-invalid-license-json' : 'error-invalid-license-schema';
+                        throw new Meteor.Error(code, error.message);
+                }
+
+                throw error;
         }
 };
 

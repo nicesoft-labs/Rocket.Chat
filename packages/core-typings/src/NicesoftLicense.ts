@@ -1,4 +1,4 @@
-export type NicesoftLicenseSource = 'env' | 'file';
+export type NicesoftLicenseSource = 'env' | 'file' | 'db';
 
 export interface NicesoftLicenseDocument {
         product: string;

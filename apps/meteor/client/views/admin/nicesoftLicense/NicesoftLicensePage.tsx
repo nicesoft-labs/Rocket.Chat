@@ -21,12 +21,6 @@ import PageSkeleton from '../../../components/PageSkeleton';
 import type { OperationResult } from '@rocket.chat/rest-typings';
 import { useFormatDateAndTime } from '../../../hooks/useFormatDateAndTime';
 
-const statusToCalloutType = {
-        valid: 'success',
-        invalid: 'danger',
-        missing: 'warning',
-} as const;
-
 type LicenseInfo = OperationResult<'GET', '/v1/nicesoft.license.info'>;
 
 const NicesoftLicensePage = () => {
@@ -52,26 +46,6 @@ const NicesoftLicensePage = () => {
         const status = licenseQuery.data?.status ?? 'missing';
         const source = licenseQuery.data?.source;
 
-        const statusLabels = useMemo(() => {
-                switch (status) {
-                        case 'valid':
-                                return {
-                                        title: t('Nicesoft_License_Status_Licensed'),
-                                        subtitle: t('Nicesoft_License_Status_Licensed_Description'),
-                                };
-                        case 'invalid':
-                                return {
-                                        title: t('Nicesoft_License_Status_Invalid'),
-                                        subtitle: t('Nicesoft_License_Status_Invalid_Description'),
-                                };
-                        default:
-                                return {
-                                        title: t('Nicesoft_License_Status_Missing'),
-                                        subtitle: t('Nicesoft_License_Status_Missing_Description'),
-                                };
-                }
-        }, [status, t]);
-
         const sourceLabel = useMemo(() => {
                 if (!source) {
                         return t('Nicesoft_License_Source_Unknown');
@@ -79,6 +53,10 @@ const NicesoftLicensePage = () => {
 
                 if (source === 'env') {
                         return t('Nicesoft_License_Source_Env');
+                }
+
+                if (source === 'db') {
+                        return t('Nicesoft_License_Source_DB');
                 }
 
                 return t('Nicesoft_License_Source_File');
@@ -206,6 +184,35 @@ const NicesoftLicensePage = () => {
                 return t('Nicesoft_License_Days_Left', { count: daysRemaining });
         }, [daysRemaining, t]);
 
+        const renderStatus = () => {
+                if (status === 'missing') {
+                        return (
+                                <Callout type='warning' title={t('Nicesoft_License_Status_Missing')} mb='x16'>
+                                        <Box>{t('Nicesoft_License_Status_Missing_Description')}</Box>
+                                </Callout>
+                        );
+                }
+
+                if (status === 'invalid') {
+                        return (
+                                <Callout type='danger' title={t('Nicesoft_License_Status_Invalid')} mb='x16'>
+                                        <Box>{t('Nicesoft_License_Status_Invalid_Description')}</Box>
+                                        {licenseQuery.data?.reason && (
+                                                <Box mt='x8'>
+                                                        <strong>{t('Nicesoft_License_Status_Reason')}:</strong> {licenseQuery.data.reason}
+                                                </Box>
+                                        )}
+                                </Callout>
+                        );
+                }
+
+                return (
+                        <Callout type='success' title={t('Nicesoft_License_Status_Licensed')} mb='x16'>
+                                <Box>{t('Nicesoft_License_Status_Licensed_Description')}</Box>
+                        </Callout>
+                );
+        };
+
         return (
                 <Page>
                         <PageHeader title={t('Nicesoft_License')}>
@@ -227,61 +234,66 @@ const NicesoftLicensePage = () => {
                         <PageScrollableContentWithShadow>
                                 <Box display='flex' flexDirection={{ default: 'column', md: 'row' }} gap='x16'>
                                         <Box flexGrow={1} minWidth={0}>
-                                                <Callout mb='x16' type={statusToCalloutType[status]} title={statusLabels.title}>
-                                                        <Box>{statusLabels.subtitle}</Box>
-                                                        {licenseQuery.data?.reason && (
-                                                                <Box mt='x8'>
-                                                                        <strong>{t('Nicesoft_License_Status_Reason')}:</strong> {licenseQuery.data.reason}
-                                                                </Box>
-                                                        )}
-                                                </Callout>
-                                                <FieldGroup>
-                                                        <Field>
-                                                                <FieldLabel>{t('Nicesoft_License_Edition')}</FieldLabel>
-                                                                <FieldRow>{licenseQuery.data?.edition ?? t('Nicesoft_License_Not_Available')}</FieldRow>
-                                                        </Field>
-                                                        <Field>
-                                                                <FieldLabel>{t('Nicesoft_License_Tenant')}</FieldLabel>
-                                                                <FieldRow>{licenseQuery.data?.tenant ?? t('Nicesoft_License_Not_Available')}</FieldRow>
-                                                        </Field>
-                                                        <Field>
-                                                                <FieldLabel>{t('Nicesoft_License_Valid_To')}</FieldLabel>
-                                                                <FieldRow>{formattedExpiration ?? t('Nicesoft_License_Not_Available')}</FieldRow>
-                                                                {daysRemainingLabel && <FieldHint>{daysRemainingLabel}</FieldHint>}
-                                                        </Field>
-                                                        <Field>
-                                                                <FieldLabel>{t('Nicesoft_License_Source')}</FieldLabel>
-                                                                <FieldRow>{sourceLabel}</FieldRow>
-                                                        </Field>
-                                                </FieldGroup>
-                                                <Box mt='x16'>
-                                                        <FieldLabel>{t('Nicesoft_License_Features')}</FieldLabel>
-                                                        {features.length > 0 ? (
-                                                                <Box is='ul' pl='x20' color='default'>
-                                                                        {features.map((feature) => (
-                                                                                <Box is='li' key={feature}>
-                                                                                        {feature}
+                                                {renderStatus()}
+                                                {status === 'valid' && (
+                                                        <>
+                                                                <FieldGroup>
+                                                                        <Field>
+                                                                                <FieldLabel>{t('Nicesoft_License_Edition')}</FieldLabel>
+                                                                                <FieldRow>{licenseQuery.data?.edition ?? t('Nicesoft_License_Not_Available')}</FieldRow>
+                                                                        </Field>
+                                                                        <Field>
+                                                                                <FieldLabel>{t('Nicesoft_License_Tenant')}</FieldLabel>
+                                                                                <FieldRow>{licenseQuery.data?.tenant ?? t('Nicesoft_License_Not_Available')}</FieldRow>
+                                                                        </Field>
+                                                                        <Field>
+                                                                                <FieldLabel>{t('Nicesoft_License_Valid_To')}</FieldLabel>
+                                                                                <FieldRow>{formattedExpiration ?? t('Nicesoft_License_Not_Available')}</FieldRow>
+                                                                                {daysRemainingLabel && <FieldHint>{daysRemainingLabel}</FieldHint>}
+                                                                        </Field>
+                                                                        <Field>
+                                                                                <FieldLabel>{t('Nicesoft_License_Source')}</FieldLabel>
+                                                                                <FieldRow>{sourceLabel}</FieldRow>
+                                                                        </Field>
+                                                                </FieldGroup>
+                                                                <Box mt='x16'>
+                                                                        <FieldLabel>{t('Nicesoft_License_Features')}</FieldLabel>
+                                                                        {features.length > 0 ? (
+                                                                                <Box is='ul' pl='x20' color='default'>
+                                                                                        {features.map((feature) => (
+                                                                                                <Box is='li' key={feature}>
+                                                                                                        {feature}
+                                                                                                </Box>
+                                                                                        ))}
                                                                                 </Box>
-                                                                        ))}
+                                                                        ) : (
+                                                                                <Box color='hint'>{t('Nicesoft_License_No_Features')}</Box>
+                                                                        )}
                                                                 </Box>
-                                                        ) : (
-                                                                <Box color='hint'>{t('Nicesoft_License_No_Features')}</Box>
-                                                        )}
-                                                </Box>
-                                                <Box mt='x16'>
-                                                        <FieldLabel>{t('Nicesoft_License_Limits')}</FieldLabel>
-                                                        {limits.length > 0 ? (
-                                                                <Box is='ul' pl='x20' color='default'>
-                                                                        {limits.map(([key, value]) => (
-                                                                                <Box is='li' key={key}>
-                                                                                        {key}: {value}
+                                                                <Box mt='x16'>
+                                                                        <FieldLabel>{t('Nicesoft_License_Limits')}</FieldLabel>
+                                                                        {limits.length > 0 ? (
+                                                                                <Box is='ul' pl='x20' color='default'>
+                                                                                        {limits.map(([key, value]) => (
+                                                                                                <Box is='li' key={key}>
+                                                                                                        {key}: {value}
+                                                                                                </Box>
+                                                                                        ))}
                                                                                 </Box>
-                                                                        ))}
+                                                                        ) : (
+                                                                                <Box color='hint'>{t('Nicesoft_License_No_Limits')}</Box>
+                                                                        )}
                                                                 </Box>
-                                                        ) : (
-                                                                <Box color='hint'>{t('Nicesoft_License_No_Limits')}</Box>
-                                                        )}
-                                                </Box>
+                                                        </>
+                                                )}
+                                                {status !== 'valid' && (
+                                                        <FieldGroup>
+                                                                <Field>
+                                                                        <FieldLabel>{t('Nicesoft_License_Source')}</FieldLabel>
+                                                                        <FieldRow>{sourceLabel}</FieldRow>
+                                                                </Field>
+                                                        </FieldGroup>
+                                                )}
                                         </Box>
                                         <Box flexGrow={1} minWidth={0}>
                                                 <Box is='form' onSubmit={handleUpload} display='flex' flexDirection='column' gap='x16'>
