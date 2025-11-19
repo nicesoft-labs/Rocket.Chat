@@ -1,12 +1,25 @@
-import { License } from '@rocket.chat/license';
-
 import { ContactImporter } from './ContactImporter';
 import { Importers } from '../../importer/server';
+import { hasFeature, onLicenseChanged } from '../../../server/lib/nicesoft-license';
 
-License.onValidFeature('contact-id-verification', () => {
-	Importers.add({
-		key: 'omnichannel_contact',
-		name: 'omnichannel_contacts_importer',
-		importer: ContactImporter,
-	});
+let importerRegistered = false;
+
+const registerImporter = (): void => {
+        if (importerRegistered || !hasFeature('contact-id-verification')) {
+                return;
+        }
+
+        Importers.add({
+                key: 'omnichannel_contact',
+                name: 'omnichannel_contacts_importer',
+                importer: ContactImporter,
+        });
+
+        importerRegistered = true;
+};
+
+registerImporter();
+
+onLicenseChanged(() => {
+        registerImporter();
 });
