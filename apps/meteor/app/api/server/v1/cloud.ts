@@ -1,4 +1,4 @@
-import { isCloudConfirmationPollProps, isCloudCreateRegistrationIntentProps, isCloudManualRegisterProps } from '@rocket.chat/rest-typings';
+import { isCloudConfirmationPollProps, isCloudManualRegisterProps } from '@rocket.chat/rest-typings';
 
 import { CloudWorkspaceRegistrationError } from '../../../../lib/errors/CloudWorkspaceRegistrationError';
 import { SystemLogger } from '../../../../server/lib/logger/system';
@@ -6,14 +6,12 @@ import { hasRoleAsync } from '../../../authorization/server/functions/hasRole';
 import { getCheckoutUrl } from '../../../cloud/server/functions/getCheckoutUrl';
 import { getConfirmationPoll } from '../../../cloud/server/functions/getConfirmationPoll';
 import {
-	CloudWorkspaceAccessTokenEmptyError,
-	CloudWorkspaceAccessTokenError,
+CloudWorkspaceAccessTokenEmptyError,
+CloudWorkspaceAccessTokenError,
 } from '../../../cloud/server/functions/getWorkspaceAccessToken';
-import { registerPreIntentWorkspaceWizard } from '../../../cloud/server/functions/registerPreIntentWorkspaceWizard';
 import { removeLicense } from '../../../cloud/server/functions/removeLicense';
 import { retrieveRegistrationStatus } from '../../../cloud/server/functions/retrieveRegistrationStatus';
 import { saveRegistrationData, saveRegistrationDataManual } from '../../../cloud/server/functions/saveRegistrationData';
-import { startRegisterWorkspaceSetupWizard } from '../../../cloud/server/functions/startRegisterWorkspaceSetupWizard';
 import { syncWorkspace } from '../../../cloud/server/functions/syncWorkspace';
 import { API } from '../api';
 
@@ -38,34 +36,8 @@ API.v1.addRoute(
 );
 
 API.v1.addRoute(
-	'cloud.createRegistrationIntent',
-	{ authRequired: true, permissionsRequired: ['manage-cloud'], validateParams: isCloudCreateRegistrationIntentProps },
-	{
-		async post() {
-			const intentData = await startRegisterWorkspaceSetupWizard(this.bodyParams.resend, this.bodyParams.email);
-
-			if (intentData) {
-				return API.v1.success({ intentData });
-			}
-
-			return API.v1.failure('Invalid query');
-		},
-	},
-);
-
-API.v1.addRoute(
-	'cloud.registerPreIntent',
-	{ authRequired: true, permissionsRequired: ['manage-cloud'] },
-	{
-		async post() {
-			return API.v1.success({ offline: !(await registerPreIntentWorkspaceWizard()) });
-		},
-	},
-);
-
-API.v1.addRoute(
-	'cloud.confirmationPoll',
-	{ authRequired: true, permissionsRequired: ['manage-cloud'], validateParams: isCloudConfirmationPollProps },
+'cloud.confirmationPoll',
+{ authRequired: true, permissionsRequired: ['manage-cloud'], validateParams: isCloudConfirmationPollProps },
 	{
 		async get() {
 			const { deviceCode } = this.queryParams;

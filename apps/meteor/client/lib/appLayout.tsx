@@ -7,7 +7,6 @@ const BannerRegion = lazy(() => import('../views/banners/BannerRegion'));
 const ModalRegion = lazy(() => import('@rocket.chat/ui-client').then(({ ModalRegion }) => ({ default: ModalRegion })));
 const ActionManagerBusyState = lazy(() => import('../components/ActionManagerBusyState'));
 const AppLayoutThemeWrapper = lazy(() => import('../components/AppLayoutThemeWrapper'));
-const CloudAnnouncementsRegion = lazy(() => import('../views/cloud/CloudAnnouncementsRegion'));
 
 type AppLayoutDescriptor = ReactElement | null;
 
@@ -28,14 +27,13 @@ class AppLayoutSubscription extends Emitter<{ update: void }> {
 	}
 
 	wrap(element: ReactElement): ReactElement {
-		return (
-			<AppLayoutThemeWrapper>
-				<ConnectionStatusBar />
-				<ActionManagerBusyState />
-				<CloudAnnouncementsRegion />
-				<BannerRegion />
-				{element}
-				<ModalRegion />
+                return (
+                        <AppLayoutThemeWrapper>
+                                <ConnectionStatusBar />
+                                <ActionManagerBusyState />
+                                <BannerRegion />
+                                {element}
+                                <ModalRegion />
 			</AppLayoutThemeWrapper>
 		);
 	}
