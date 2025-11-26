@@ -15,16 +15,22 @@ export const {
 		icon: 'info-circled',
 		permissionGranted: (): boolean => hasPermission('view-statistics'),
 	},
-	{
-		href: '/admin/subscription',
-		i18nLabel: 'Subscription',
-		icon: 'card',
-		permissionGranted: (): boolean => hasPermission('manage-cloud'),
-	},
-	{
-		href: '/admin/engagement/users',
-		i18nLabel: 'Engagement',
-		icon: 'dashboard',
+{
+href: '/admin/subscription',
+i18nLabel: 'Subscription',
+icon: 'card',
+permissionGranted: (): boolean => hasPermission('manage-cloud'),
+},
+{
+href: '/admin/nicechat-cloud',
+i18nLabel: 'NiceChatCloud_Title',
+icon: 'cloud',
+permissionGranted: (): boolean => hasPermission('manage-cloud'),
+},
+{
+href: '/admin/engagement/users',
+i18nLabel: 'Engagement',
+icon: 'dashboard',
 		permissionGranted: (): boolean => hasPermission('view-engagement-dashboard'),
 	},
 	{
