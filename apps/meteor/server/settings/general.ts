@@ -285,12 +285,28 @@ export const createGeneralSettings = () =>
 				public: true,
 			});
 		});
-		await this.section('Reporting', async function () {
-			return this.add('Statistics_reporting', true, {
-				type: 'boolean',
-				hidden: true,
-			});
-		});
+                await this.section('Reporting', async function () {
+                        await this.add('Statistics_reporting', true, {
+                                type: 'boolean',
+                                hidden: true,
+                        });
+                        await this.add('Telemetry_NiceCloud_Enabled', true, {
+                                type: 'boolean',
+                                public: true,
+                                i18nLabel: 'Telemetry_NiceCloud_Enabled',
+                                i18nDescription: 'Telemetry_NiceCloud_Enabled_Description',
+                        });
+                        await this.add('Telemetry_NiceCloud_Anonymize', true, {
+                                type: 'boolean',
+                                public: true,
+                                i18nLabel: 'Telemetry_NiceCloud_Anonymize',
+                                i18nDescription: 'Telemetry_NiceCloud_Anonymize_Description',
+                        });
+                        return this.add('Telemetry_NiceCloud_Endpoint', 'https://collector.nice.chat/', {
+                                type: 'string',
+                                hidden: true,
+                        });
+                });
 		await this.section('Notifications', async function () {
 			await this.add('Notifications_Max_Room_Members', 100, {
 				type: 'int',

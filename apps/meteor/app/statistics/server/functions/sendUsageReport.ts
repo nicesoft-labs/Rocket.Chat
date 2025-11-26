@@ -6,21 +6,49 @@ import { tracerSpan } from '@rocket.chat/tracing';
 import { Meteor } from 'meteor/meteor';
 
 import { statistics } from '..';
+import { settings } from '../../../settings/server';
 import { getWorkspaceAccessToken } from '../../../cloud/server';
 
-async function sendStats(logger: Logger, cronStatistics: IStats): Promise<string | undefined> {
-	try {
-		const token = await getWorkspaceAccessToken();
-		const headers = { ...(token && { Authorization: `Bearer ${token}` }) };
+const preparePayload = (cronStatistics: IStats, anonymize: boolean): Record<string, any> => {
+        const payload: Record<string, any> = { ...cronStatistics };
 
-		const response = await fetch('https://collector.rocket.chat/', {
-			method: 'POST',
-			body: {
-				...cronStatistics,
-				host: Meteor.absoluteUrl(),
-			},
-			headers,
-		});
+        if (anonymize) {
+                delete payload.uniqueId;
+                delete payload.deploymentFingerprintHash;
+                delete payload.deploymentFingerprintVerified;
+                delete payload.lastLogin;
+                delete payload.lastMessageSentAt;
+                delete payload.lastSeenSubscription;
+                delete payload.siteUrl;
+                delete payload.instanceName;
+                delete payload.host;
+        }
+
+        return payload;
+};
+
+async function sendStats(logger: Logger, cronStatistics: IStats): Promise<string | undefined> {
+        if (!settings.get('Telemetry_NiceCloud_Enabled')) {
+                return;
+        }
+
+        const anonymizeTelemetry = settings.get('Telemetry_NiceCloud_Anonymize');
+        const telemetryEndpoint = settings.get('Telemetry_NiceCloud_Endpoint') || 'https://collector.nice.chat/';
+
+        try {
+                const token = await getWorkspaceAccessToken();
+                const headers = { ...(token && { Authorization: `Bearer ${token}` }) };
+
+                const payload = preparePayload(cronStatistics, anonymizeTelemetry);
+                if (!anonymizeTelemetry) {
+                        payload.host = Meteor.absoluteUrl();
+                }
+
+                const response = await fetch(telemetryEndpoint, {
+                        method: 'POST',
+                        body: payload,
+                        headers,
+                });
 
 		const { statsToken } = await response.json();
 
