@@ -18,7 +18,7 @@ import {
 import { useMethod, useSetModal, useToastMessageDispatch } from '@rocket.chat/ui-contexts';
 import type { ChangeEvent } from 'react';
 import { useState } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
 import WorkspaceRegistrationModal from './RegisterWorkspaceModal';
 
@@ -80,20 +80,8 @@ const RegisterWorkspaceTokenModal = ({ onClose, onStatusChange, ...props }: Regi
 				<ModalClose onClick={onClose} />
 			</ModalHeader>
 			<ModalContent>
-				<Box is='p'>
-					<Trans i18nKey='RegisterWorkspace_Token_Step_One'>
-						1. Go to:{' '}
-						<Box is='span' fontWeight={600}>
-							cloud.rocket.chat {'>'} Workspaces
-						</Box>{' '}
-						and click{' '}
-						<Box is='span' fontWeight={600}>
-							"Register self-managed"
-						</Box>
-						.
-					</Trans>
-				</Box>
-				<Box is='p' fontSize='p2'>{`2. ${t('RegisterWorkspace_Token_Step_Two')}`}</Box>
+                                <Box is='p' fontSize='p2'>{t('RegisterWorkspace_Token_Step_One')}</Box>
+                                <Box is='p' fontSize='p2'>{t('RegisterWorkspace_Token_Step_Two')}</Box>
 				<Field pbs={10}>
 					<FieldLabel>{t('Registration_Token')}</FieldLabel>
 					<FieldRow>

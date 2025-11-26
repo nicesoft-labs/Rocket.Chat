@@ -10,13 +10,11 @@ import {
 	ModalHeaderText,
 	ModalTitle,
 } from '@rocket.chat/fuselage';
-import { ExternalLink } from '@rocket.chat/ui-client';
 import { useSetModal } from '@rocket.chat/ui-contexts';
 import { useTranslation } from 'react-i18next';
 
 import RegisterWorkspaceSetupModal from './RegisterWorkspaceSetupModal';
 import RegisterWorkspaceTokenModal from './RegisterWorkspaceTokenModal';
-import { links } from '../../../../../lib/links';
 import useFeatureBullets from '../hooks/useFeatureBullets';
 
 type RegisterWorkspaceModalProps = {
@@ -24,12 +22,10 @@ type RegisterWorkspaceModalProps = {
 	onStatusChange?: () => void;
 };
 
-const documentationLink = links.go.registerInfoCollected;
-
 const RegisterWorkspaceModal = ({ onClose, onStatusChange, ...props }: RegisterWorkspaceModalProps) => {
-	const setModal = useSetModal();
-	const bulletFeatures = useFeatureBullets();
-	const { t } = useTranslation();
+        const setModal = useSetModal();
+        const bulletFeatures = useFeatureBullets();
+        const { t } = useTranslation();
 
 	const handleTokenModal = (): void => {
 		const handleModalClose = (): void => setModal(null);
@@ -66,20 +62,17 @@ const RegisterWorkspaceModal = ({ onClose, onStatusChange, ...props }: RegisterW
 						{t('RegisterWorkspace_Registered_Benefits')}
 					</Box>
 				</Box>
-			</ModalContent>
-			<ModalFooter>
-				<Box is='div' display='flex' justifyContent='space-between' alignItems='center' w='full'>
-					<ExternalLink to={documentationLink}>{t('Learn_more')}</ExternalLink>
-					<ButtonGroup align='end'>
-						<Button onClick={handleTokenModal}>{t('Use_token')}</Button>
-						<Button primary onClick={handleSetupModal}>
-							{t('RegisterWorkspace_Button')}
-						</Button>
-					</ButtonGroup>
-				</Box>
-			</ModalFooter>
-		</Modal>
-	);
+                        </ModalContent>
+                        <ModalFooter>
+                                <ButtonGroup align='end' w='full'>
+                                        <Button onClick={handleTokenModal}>{t('Use_token')}</Button>
+                                        <Button primary onClick={handleSetupModal}>
+                                                {t('RegisterWorkspace_Button')}
+                                        </Button>
+                                </ButtonGroup>
+                        </ModalFooter>
+                </Modal>
+        );
 };
 
 export default RegisterWorkspaceModal;
