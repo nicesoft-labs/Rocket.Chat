@@ -106,3 +106,5 @@ export class NicesoftCloudController implements CloudController {
 export const createCloudClient = (storagePath?: string): CloudController => new NicesoftCloudController(storagePath);
 
 export const Cloud = createCloudClient();
+
+export * from './communication';
