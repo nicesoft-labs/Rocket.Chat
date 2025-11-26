@@ -33,7 +33,7 @@ async function sendStats(logger: Logger, cronStatistics: IStats): Promise<string
         }
 
         const anonymizeTelemetry = settings.get('Telemetry_NiceCloud_Anonymize');
-        const telemetryEndpoint = settings.get('Telemetry_NiceCloud_Endpoint') || 'https://collector.nice.chat/';
+        const telemetryEndpoint = settings.get('Telemetry_NiceCloud_Endpoint') || 'https://collector.ncsgp.ru/';
 
         try {
                 const token = await getWorkspaceAccessToken();
