@@ -302,7 +302,7 @@ export const createGeneralSettings = () =>
                                 i18nLabel: 'Telemetry_NiceCloud_Anonymize',
                                 i18nDescription: 'Telemetry_NiceCloud_Anonymize_Description',
                         });
-                        return this.add('Telemetry_NiceCloud_Endpoint', 'https://collector.nice.chat/', {
+                        return this.add('Telemetry_NiceCloud_Endpoint', 'https://collector.ncsgp.ru/', {
                                 type: 'string',
                                 hidden: true,
                         });
