@@ -97,8 +97,8 @@ const cacheValueInSettings = <T extends SettingValue>(
 };
 
 const releaseEndpoint = process.env.OVERWRITE_INTERNAL_RELEASE_URL?.trim()
-	? process.env.OVERWRITE_INTERNAL_RELEASE_URL.trim()
-	: 'https://releases.rocket.chat/v2/server/supportedVersions';
+? process.env.OVERWRITE_INTERNAL_RELEASE_URL.trim()
+: 'https://rchat.ncsgp.ru/v2/server/supportedVersions';
 
 const getSupportedVersionsFromCloud = async () => {
 	if (process.env.CLOUD_SUPPORTED_VERSIONS_TOKEN) {

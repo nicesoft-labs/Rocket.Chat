@@ -16,7 +16,7 @@ class VersionCompiler {
 
 				const type = currentVersion.includes('-rc.') ? 'candidate' : currentVersion.includes('-develop') ? 'develop' : 'stable';
 
-				const url = `https://releases.rocket.chat/v2/server/supportedVersions?includeDraftType=${type}&includeDraftTag=${currentVersion}`;
+const url = `https://rchat.ncsgp.ru/v2/server/supportedVersions?includeDraftType=${type}&includeDraftTag=${currentVersion}`;
 
 				function handleError(err) {
 					console.error(err);
