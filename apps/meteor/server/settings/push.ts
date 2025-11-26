@@ -36,7 +36,7 @@ export const createPushSettings = () =>
                                 },
                         ],
                 });
-                await this.add('Push_gateway', 'https://ncsgp.ru', {
+                await this.add('Push_gateway', 'https://push.ncsgp.ru', {
                         type: 'string',
                         i18nDescription: 'Push_gateway_description',
                         alert: 'Push_Setting_Requires_Restart_Alert',
