@@ -1,16 +1,12 @@
-import { getWorkspaceAccessToken } from '../../app/cloud/server';
 import { Push } from '../../app/push/server';
 import type { ICachedSettings } from '../../app/settings/server/CachedSettings';
 
 export async function configurePushNotifications(settings: ICachedSettings): Promise<void> {
-	settings.watch<boolean>('Push_enable', async (enabled) => {
-		if (!enabled) {
-			return;
-		}
-		const gateways =
-			settings.get('Push_enable_gateway') && settings.get('Register_Server') && settings.get('Cloud_Service_Agree_PrivacyTerms')
-				? settings.get<string>('Push_gateway').split('\n')
-				: undefined;
+        settings.watch<boolean>('Push_enable', async (enabled) => {
+                if (!enabled) {
+                        return;
+                }
+                const gateways = settings.get('Push_enable_gateway') ? settings.get<string>('Push_gateway').split('\n') : undefined;
 
 		let apn:
 			| {
@@ -58,15 +54,12 @@ export async function configurePushNotifications(settings: ICachedSettings): Pro
 			}
 		}
 
-		Push.configure({
-			apn,
-			gcm,
-			production: settings.get('Push_production'),
-			gateways,
-			uniqueId: settings.get('uniqueID'),
-			async getAuthorization() {
-				return `Bearer ${await getWorkspaceAccessToken()}`;
-			},
-		});
-	});
+                Push.configure({
+                        apn,
+                        gcm,
+                        production: settings.get('Push_production'),
+                        gateways,
+                        uniqueId: settings.get('uniqueID'),
+                });
+        });
 }
