@@ -74,20 +74,20 @@ const AppsProvider = ({ children }: AppsProviderProps) => {
 		});
 	}, [invalidate, invalidateLicenseQuery, isEnterprise, stream]);
 
-	const marketplace = useQuery({
-		queryKey: ['marketplace', 'apps-marketplace', isAdminUser],
+        const marketplace = useQuery({
+                queryKey: ['marketplace', 'apps-marketplace', isAdminUser],
 
-		queryFn: async () => {
-			const result = await AppClientOrchestratorInstance.getAppsFromMarketplace(isAdminUser);
-			if (result.error && typeof result.error === 'string') {
-				throw new Error(result.error);
-			}
-			return result.apps;
-		},
+                queryFn: async () => {
+                        const result = await AppClientOrchestratorInstance.getAppsFromMarketplace(isAdminUser);
+                        if (result.error && typeof result.error === 'string') {
+                                throw new Error(result.error);
+                        }
+                        return result;
+                },
 
-		staleTime: Infinity,
-		placeholderData: keepPreviousData,
-	});
+                staleTime: Infinity,
+                placeholderData: keepPreviousData,
+        });
 
 	const instance = useQuery({
 		queryKey: ['marketplace', 'apps-instance', isAdminUser],
@@ -106,14 +106,14 @@ const AppsProvider = ({ children }: AppsProviderProps) => {
 		refetchOnMount: 'always',
 	});
 
-	const { isPending: isMarketplaceDataLoading, data: marketplaceData } = useQuery({
-		queryKey: ['marketplace', 'apps-stored', instance.data, marketplace.data],
-		queryFn: () => storeQueryFunction(marketplace, instance),
-		enabled: marketplace.isFetched && instance.isFetched,
-		placeholderData: keepPreviousData,
-	});
+        const { isPending: isMarketplaceDataLoading, data: marketplaceData } = useQuery({
+                queryKey: ['marketplace', 'apps-stored', instance.data, marketplace.data],
+                queryFn: () => storeQueryFunction(marketplace, instance),
+                enabled: marketplace.isFetched && instance.isFetched,
+                placeholderData: keepPreviousData,
+        });
 
-	const [marketplaceAppsData, installedAppsData, privateAppsData] = marketplaceData || [];
+        const [marketplaceAppsData, installedAppsData, privateAppsData, marketplaceHealth] = marketplaceData || [];
 
 	useEffect(() => {
 		if (instance.data && marketplace.data) {
@@ -123,30 +123,31 @@ const AppsProvider = ({ children }: AppsProviderProps) => {
 		}
 	}, [marketplace.data, instance.data, queryClient]);
 
-	return (
-		<AppsContext.Provider
-			children={children}
-			value={{
-				installedApps: getAppState(isMarketplaceDataLoading, installedAppsData),
-				marketplaceApps: getAppState(
-					isMarketplaceDataLoading,
-					marketplaceAppsData,
-					marketplace.error instanceof Error ? marketplace.error : undefined,
-				),
-				privateApps: getAppState(isMarketplaceDataLoading, privateAppsData),
+        return (
+                <AppsContext.Provider
+                        children={children}
+                        value={{
+                                installedApps: getAppState(isMarketplaceDataLoading, installedAppsData),
+                                marketplaceApps: getAppState(
+                                        isMarketplaceDataLoading,
+                                        marketplaceAppsData,
+                                        marketplace.error instanceof Error ? marketplace.error : undefined,
+                                ),
+                                privateApps: getAppState(isMarketplaceDataLoading, privateAppsData),
 
-				reload: async () => {
-					await Promise.all([
-						queryClient.invalidateQueries({
-							queryKey: ['marketplace'],
-						}),
-					]);
-				},
-				orchestrator: AppClientOrchestratorInstance,
-				privateAppsEnabled: (limits?.privateApps?.max ?? 0) !== 0,
-			}}
-		/>
-	);
+                                reload: async () => {
+                                        await Promise.all([
+                                                queryClient.invalidateQueries({
+                                                        queryKey: ['marketplace'],
+                                                }),
+                                        ]);
+                                },
+                                orchestrator: AppClientOrchestratorInstance,
+                                privateAppsEnabled: (limits?.privateApps?.max ?? 0) !== 0,
+marketplaceHealth: marketplaceHealth ?? marketplace.data?.health ?? { ok: true },
+                        }}
+                />
+        );
 };
 
 export default AppsProvider;

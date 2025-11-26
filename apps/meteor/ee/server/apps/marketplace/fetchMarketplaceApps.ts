@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { getMarketplaceHeaders } from './getMarketplaceHeaders';
 import { getWorkspaceAccessToken } from '../../../../app/cloud/server';
 import { Apps } from '../orchestrator';
-import { MarketplaceAppsError, MarketplaceConnectionError, MarketplaceUnsupportedVersionError } from './marketplaceErrors';
+import {
+        MarketplaceAppsError,
+        MarketplaceConnectionError,
+        MarketplaceUnavailableError,
+        MarketplaceUnsupportedVersionError,
+} from './marketplaceErrors';
 
 type FetchMarketplaceAppsParams = {
 	endUserID?: string;
@@ -145,17 +150,21 @@ export async function fetchMarketplaceApps({ endUserID }: FetchMarketplaceAppsPa
 		headers.Authorization = `Bearer ${token}`;
 	}
 
-	let request;
-	try {
-		request = await Apps.getMarketplaceClient().fetch(`v1/apps`, {
-			headers,
-			params: {
-				...(endUserID && { endUserID }),
-			},
-		});
-	} catch (error) {
-		throw new MarketplaceConnectionError('Marketplace_Bad_Marketplace_Connection');
-	}
+        let request;
+        try {
+                request = await Apps.getMarketplaceClient().fetch(`v1/apps`, {
+                        headers,
+                        params: {
+                                ...(endUserID && { endUserID }),
+                        },
+                });
+        } catch (error) {
+                if (error instanceof MarketplaceUnavailableError) {
+                        throw error;
+                }
+
+                throw new MarketplaceConnectionError('Marketplace_Bad_Marketplace_Connection');
+        }
 
 	if (request.status === 200) {
 		const response = await request.json();

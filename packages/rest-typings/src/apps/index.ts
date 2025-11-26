@@ -167,15 +167,15 @@ export type AppsEndpoints = {
 		};
 	};
 
-	'/apps/marketplace': {
-		GET: (params: {
-			purchaseType?: 'buy' | 'subscription';
-			version?: string;
-			appId?: string;
-			details?: 'true' | 'false';
-			isAdminUser?: string;
-		}) => App[];
-	};
+        '/apps/marketplace': {
+                GET: (params: {
+                        purchaseType?: 'buy' | 'subscription';
+                        version?: string;
+                        appId?: string;
+                        details?: 'true' | 'false';
+                        isAdminUser?: string;
+                }) => { apps: App[]; health: { ok: boolean; error?: string } };
+        };
 
 	'/apps/categories': {
 		GET: () => AppCategory[];

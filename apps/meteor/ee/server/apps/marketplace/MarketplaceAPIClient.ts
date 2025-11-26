@@ -1,52 +1,75 @@
 import { type ExtendedFetchOptions, Response, serverFetch } from '@rocket.chat/server-fetch';
 
 import { isTesting } from './isTesting';
+import { MarketplaceUnavailableError } from './marketplaceErrors';
 
 export class MarketplaceAPIClient {
-	#fetchStrategy: (input: string, options?: ExtendedFetchOptions, allowSelfSignedCerts?: boolean) => Promise<Response>;
+        #fetchStrategy: (input: string, options?: ExtendedFetchOptions, allowSelfSignedCerts?: boolean) => Promise<Response>;
 
-	#marketplaceUrl: string;
+        #marketplaceUrl: string;
 
-	constructor() {
-		if (typeof process.env.OVERWRITE_INTERNAL_MARKETPLACE_URL === 'string' && process.env.OVERWRITE_INTERNAL_MARKETPLACE_URL !== '') {
-			this.#marketplaceUrl = process.env.OVERWRITE_INTERNAL_MARKETPLACE_URL;
-		} else {
-			this.#marketplaceUrl = 'https://marketplace.rocket.chat';
-		}
+        constructor() {
+                const configuredUrl =
+                        process.env.NICESOFT_MARKETPLACE_URL?.trim() || process.env.OVERWRITE_INTERNAL_MARKETPLACE_URL?.trim() || '';
 
-		if (isTesting()) {
-			this.#fetchStrategy = mockMarketplaceFetch;
-		} else {
-			this.#fetchStrategy = serverFetch;
-		}
-	}
+                this.#marketplaceUrl = configuredUrl;
 
-	public getMarketplaceUrl(): string {
-		return this.#marketplaceUrl;
-	}
+                if (isTesting()) {
+                        this.#fetchStrategy = mockMarketplaceFetch;
+                } else {
+                        this.#fetchStrategy = serverFetch;
+                }
+        }
 
-	public setStrategy(strategyName: 'default' | 'mock'): void {
-		switch (strategyName) {
-			case 'default':
-				this.#fetchStrategy = serverFetch;
-				break;
+        public getMarketplaceUrl(): string {
+                return this.#marketplaceUrl;
+        }
 
-			case 'mock':
-				this.#fetchStrategy = mockMarketplaceFetch;
-				break;
+        public setStrategy(strategyName: 'default' | 'mock'): void {
+                switch (strategyName) {
+                        case 'default':
+                                this.#fetchStrategy = serverFetch;
+                                break;
 
-			default:
-				throw new Error('Unknown strategy');
-		}
-	}
+                        case 'mock':
+                                this.#fetchStrategy = mockMarketplaceFetch;
+                                break;
 
-	public fetch(input: string, options?: ExtendedFetchOptions, allowSelfSignedCerts?: boolean): ReturnType<typeof serverFetch> {
-		if (!input.startsWith('http://') && !input.startsWith('https://')) {
-			input = this.getMarketplaceUrl().concat(!input.startsWith('/') ? '/' : '', input);
-		}
+                        default:
+                                throw new Error('Unknown strategy');
+                }
+        }
 
-		return this.#fetchStrategy(input, options, allowSelfSignedCerts);
-	}
+        public fetch(input: string, options?: ExtendedFetchOptions, allowSelfSignedCerts?: boolean): ReturnType<typeof serverFetch> {
+                if (!input.startsWith('http://') && !input.startsWith('https://')) {
+                        const marketplaceUrl = this.getMarketplaceUrl();
+
+                        if (!marketplaceUrl) {
+                                throw new MarketplaceUnavailableError('Marketplace URL is not configured');
+                        }
+
+                        input = marketplaceUrl.concat(!input.startsWith('/') ? '/' : '', input);
+                }
+
+                return this.#fetchStrategy(input, options, allowSelfSignedCerts);
+        }
+
+        public async health(): Promise<{ ok: boolean; error?: string }> {
+                if (!this.#marketplaceUrl) {
+                        return { ok: false, error: 'Marketplace URL is not configured' };
+                }
+
+                try {
+                        const response = await this.fetch('/health');
+                        if (!response.ok) {
+                                return { ok: false, error: `Health check failed with status ${response.status}` };
+                        }
+
+                        return { ok: true };
+                } catch (error: any) {
+                        return { ok: false, error: error?.message ?? 'Marketplace health check failed' };
+                }
+        }
 }
 
 /**
