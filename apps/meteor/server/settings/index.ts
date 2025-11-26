@@ -20,6 +20,7 @@ import { createLdapSettings } from './ldap';
 import { createLogSettings } from './logs';
 import { createMessageSettings } from './message';
 import { createMetaSettings } from './meta';
+import { createNicechatCloudSettings } from './nicechat-cloud';
 import { createMiscSettings } from './misc';
 import { createMobileSettings } from './mobile';
 import { createOauthSettings } from './oauth';
@@ -53,15 +54,16 @@ await Promise.all([
 	createDiscussionsSettings(),
 	createEmailSettings(),
 	createE2ESettings(),
-	createFileUploadSettings(),
-	createGeneralSettings(),
-	createIRCSettings(),
-	createLdapSettings(),
-	createLogSettings(),
-	createLayoutSettings(),
-	createMessageSettings(),
-	createMetaSettings(),
-	createMiscSettings(),
+        createFileUploadSettings(),
+        createGeneralSettings(),
+        createIRCSettings(),
+        createLdapSettings(),
+        createLogSettings(),
+        createLayoutSettings(),
+        createMessageSettings(),
+        createMetaSettings(),
+        createNicechatCloudSettings(),
+        createMiscSettings(),
 	createMobileSettings(),
 	createOauthSettings(),
 	createOmniSettings(),
