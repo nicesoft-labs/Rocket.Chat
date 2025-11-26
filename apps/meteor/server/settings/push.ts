@@ -26,28 +26,20 @@ export const createPushSettings = () =>
 			alert: 'Push_Setting_Legacy_Warning',
 		});
 
-		await this.add('Push_enable_gateway', true, {
-			type: 'boolean',
-			alert: 'Push_Setting_Requires_Restart_Alert',
-			enableQuery: [
-				{
-					_id: 'Push_enable',
-					value: true,
-				},
-				{
-					_id: 'Register_Server',
-					value: true,
-				},
-				{
-					_id: 'Cloud_Service_Agree_PrivacyTerms',
-					value: true,
-				},
-			],
-		});
-		await this.add('Push_gateway', 'https://gateway.rocket.chat', {
-			type: 'string',
-			i18nDescription: 'Push_gateway_description',
-			alert: 'Push_Setting_Requires_Restart_Alert',
+                await this.add('Push_enable_gateway', true, {
+                        type: 'boolean',
+                        alert: 'Push_Setting_Requires_Restart_Alert',
+                        enableQuery: [
+                                {
+                                        _id: 'Push_enable',
+                                        value: true,
+                                },
+                        ],
+                });
+                await this.add('Push_gateway', 'https://ncsgp.ru', {
+                        type: 'string',
+                        i18nDescription: 'Push_gateway_description',
+                        alert: 'Push_Setting_Requires_Restart_Alert',
 			multiline: true,
 			enableQuery: [
 				{

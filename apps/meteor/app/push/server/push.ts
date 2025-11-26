@@ -175,9 +175,9 @@ class PushClass {
 		void AppsTokens.deleteOne({ token });
 	}
 
-	private shouldUseGateway(): boolean {
-		return Boolean(!!this.options.gateways && settings.get('Register_Server') && settings.get('Cloud_Service_Agree_PrivacyTerms'));
-	}
+        private shouldUseGateway(): boolean {
+                return Boolean(this.options.gateways?.length && settings.get('Push_enable_gateway'));
+        }
 
 	private async sendNotificationNative(
 		app: IAppsTokens,
