@@ -1,4 +1,4 @@
-import { DuplicatedLicenseError } from '@rocket.chat/license';
+import { DuplicatedLicenseError } from '@rocket.chat/nicesoft-license';
 import { Settings } from '@rocket.chat/models';
 
 import { callbacks } from '../../../../../lib/callbacks';

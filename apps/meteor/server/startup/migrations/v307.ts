@@ -1,7 +1,7 @@
 import { Apps } from '@rocket.chat/apps';
 import type { AppSignatureManager } from '@rocket.chat/apps-engine/server/managers/AppSignatureManager';
 import type { IAppStorageItem } from '@rocket.chat/apps-engine/server/storage';
-import { License } from '@rocket.chat/license';
+import { License } from '@rocket.chat/nicesoft-license';
 
 import type { AppRealStorage } from '../../../ee/server/apps/storage';
 import { addMigration } from '../../lib/migrations';

@@ -2,7 +2,7 @@ import { AppStatus } from '@rocket.chat/apps-engine/definition/AppStatus';
 import type { IMarketplaceInfo } from '@rocket.chat/apps-engine/server/marketplace';
 import { AppInstallationSource, type IAppStorageItem } from '@rocket.chat/apps-engine/server/storage';
 import type { Apps } from '@rocket.chat/core-services';
-import type { LicenseImp } from '@rocket.chat/license';
+import type { LicenseImp } from '@rocket.chat/nicesoft-license';
 import { expect } from 'chai';
 
 import { _canEnableApp } from '../../../../../ee/app/license/server/canEnableApp';

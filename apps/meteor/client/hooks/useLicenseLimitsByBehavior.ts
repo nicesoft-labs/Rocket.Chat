@@ -1,5 +1,5 @@
 import type { LicenseBehavior, LicenseLimitKind } from '@rocket.chat/core-typings';
-import { validateWarnLimit } from '@rocket.chat/license/src/validation/validateLimit';
+import { validateWarnLimit } from '@rocket.chat/nicesoft-license/src/validation/validateLimit';
 
 import { useLicense } from './useLicense';
 

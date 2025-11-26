@@ -2,7 +2,7 @@ import { log } from 'console';
 
 import { Analytics } from '@rocket.chat/core-services';
 import type { IStats } from '@rocket.chat/core-typings';
-import { License } from '@rocket.chat/license';
+import { License } from '@rocket.chat/nicesoft-license';
 import { CannedResponse, OmnichannelServiceLevelAgreements, LivechatRooms, LivechatTag, LivechatUnit, Users } from '@rocket.chat/models';
 
 import { getVoIPStatistics } from './getVoIPStatistics';
