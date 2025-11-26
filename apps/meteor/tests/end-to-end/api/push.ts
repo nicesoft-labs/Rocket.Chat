@@ -216,9 +216,9 @@ describe('[Push]', () => {
 	});
 
 	describe('[/push.info]', () => {
-                before(() => Promise.all([updateSetting('Push_gateway', 'https://random-gateway.ncsgp.ru')]));
+                before(() => Promise.all([updateSetting('Push_gateway', 'https://random-push.ncsgp.ru')]));
 
-                after(() => Promise.all([updateSetting('Push_gateway', 'https://ncsgp.ru')]));
+                after(() => Promise.all([updateSetting('Push_gateway', 'https://push.ncsgp.ru')]));
 
 		it('should fail if not logged in', async () => {
 			await request
@@ -242,7 +242,7 @@ describe('[Push]', () => {
 		});
 
 		it('should succesfully retrieve default push notification info', async () => {
-                        await updateSetting('Push_gateway', 'https://ncsgp.ru');
+                        await updateSetting('Push_gateway', 'https://push.ncsgp.ru');
 			await request
 				.get(api('push.info'))
 				.set(credentials)
