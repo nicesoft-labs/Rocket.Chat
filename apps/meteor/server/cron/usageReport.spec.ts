@@ -1,9 +1,9 @@
-import { AirGappedRestriction } from '@rocket.chat/license';
+import { AirGappedRestriction } from '@rocket.chat/nicesoft-license';
 import { Statistics } from '@rocket.chat/models';
 
 import { sendUsageReportAndComputeRestriction } from './usageReport';
 
-jest.mock('@rocket.chat/license', () => ({
+jest.mock('@rocket.chat/nicesoft-license', () => ({
 	AirGappedRestriction: {
 		computeRestriction: jest.fn(),
 	},

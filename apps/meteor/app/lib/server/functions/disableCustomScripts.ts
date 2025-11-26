@@ -1,4 +1,4 @@
-import { License } from '@rocket.chat/license';
+import { License } from '@rocket.chat/nicesoft-license';
 
 export const disableCustomScripts = () => {
 	const license = License.getLicense();

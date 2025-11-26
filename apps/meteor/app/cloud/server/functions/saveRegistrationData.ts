@@ -1,4 +1,4 @@
-import { applyLicense } from '@rocket.chat/license';
+import { applyLicense } from '@rocket.chat/nicesoft-license';
 import { Settings } from '@rocket.chat/models';
 
 import { syncCloudData } from './syncWorkspace/syncCloudData';
