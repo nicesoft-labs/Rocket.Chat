@@ -12,7 +12,11 @@ import { dispatchToastMessage } from '../lib/toast';
 import type { App } from '../views/marketplace/types';
 
 const isErrorObject = (e: unknown): e is { error: string } =>
-	typeof e === 'object' && e !== null && 'error' in e && typeof e.error === 'string';
+        typeof e === 'object' && e !== null && 'error' in e && typeof (e as { error: unknown }).error === 'string';
+
+type MarketplaceHealth = { ok: boolean; error?: string };
+
+type MarketplaceAppsResponse = { apps: App[]; health?: MarketplaceHealth };
 
 class AppClientOrchestrator {
 	private _appClientUIHost: AppsEngineUIHost;
@@ -56,41 +60,56 @@ class AppClientOrchestrator {
 		throw new Error('Invalid response from API');
 	}
 
-	public async getAppsFromMarketplace(isAdminUser?: boolean): Promise<{ apps: App[]; error?: unknown }> {
-		let result: App[] = [];
-		try {
-			result = await sdk.rest.get('/apps/marketplace', { isAdminUser: isAdminUser ? isAdminUser.toString() : 'false' });
-		} catch (e) {
-			if (isErrorObject(e)) {
-				return { apps: [], error: e.error };
-			}
-			if (typeof e === 'string') {
-				return { apps: [], error: e };
-			}
-		}
+        public async getAppsFromMarketplace(
+                isAdminUser?: boolean,
+        ): Promise<{ apps: App[]; error?: unknown; health?: MarketplaceHealth }> {
+                let result: MarketplaceAppsResponse | App[] | undefined;
+                try {
+                        result = await sdk.rest.get('/apps/marketplace', { isAdminUser: isAdminUser ? isAdminUser.toString() : 'false' });
+                } catch (e) {
+                        if (isErrorObject(e)) {
+                                if (e.error === 'Marketplace_Unsupported_Version') {
+                                        return { apps: [], error: e.error, health: { ok: false, error: e.error } };
+                                }
 
-		if (!Array.isArray(result)) {
-			// TODO: chapter day: multiple results are returned, but we only need one
-			return { apps: [], error: 'Invalid response from API' };
-		}
+                                return { apps: [], health: { ok: false, error: e.error } };
+                        }
+                        if (typeof e === 'string') {
+                                if (e === 'Marketplace_Unsupported_Version') {
+                                        return { apps: [], error: e, health: { ok: false, error: e } };
+                                }
 
-		const apps = (result as App[]).map((app: App) => {
-			const { latest, appRequestStats, price, pricingPlans, purchaseType, isEnterpriseOnly, modifiedAt, bundledIn, requestedEndUser } = app;
-			return {
-				...latest,
-				appRequestStats,
-				price,
-				pricingPlans,
-				purchaseType,
-				isEnterpriseOnly,
-				modifiedAt,
-				bundledIn,
-				requestedEndUser,
-			};
-		});
+                                return { apps: [], health: { ok: false, error: e } };
+                        }
 
-		return { apps, error: undefined };
-	}
+                        return { apps: [], health: { ok: false } };
+                }
+
+                const normalizedResponse: MarketplaceAppsResponse = Array.isArray(result)
+                        ? { apps: result, health: { ok: true } }
+                        : { apps: result?.apps || [], health: result?.health || { ok: false, error: 'Invalid response from API' } };
+
+                if (!Array.isArray(normalizedResponse.apps)) {
+                        return { apps: [], error: 'Invalid response from API', health: normalizedResponse.health };
+                }
+
+                const apps = normalizedResponse.apps.map((app: App) => {
+                        const { latest, appRequestStats, price, pricingPlans, purchaseType, isEnterpriseOnly, modifiedAt, bundledIn, requestedEndUser } = app;
+                        return {
+                                ...latest,
+                                appRequestStats,
+                                price,
+                                pricingPlans,
+                                purchaseType,
+                                isEnterpriseOnly,
+                                modifiedAt,
+                                bundledIn,
+                                requestedEndUser,
+                        };
+                });
+
+                return { apps, error: undefined, health: normalizedResponse.health };
+        }
 
 	public async getAppsOnBundle(bundleId: string): Promise<App[]> {
 		const { apps } = await sdk.rest.get(`/apps/bundles/${bundleId}/apps`);

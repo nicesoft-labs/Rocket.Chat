@@ -1,5 +1,6 @@
+import { Box, Button, Callout } from '@rocket.chat/fuselage';
 import { useDebouncedValue } from '@rocket.chat/fuselage-hooks';
-import { useRouteParameter, useRouter } from '@rocket.chat/ui-contexts';
+import { usePermission, useRouteParameter, useRouter } from '@rocket.chat/ui-contexts';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,13 +28,14 @@ import { useRadioToggle } from '../hooks/useRadioToggle';
 type AppsContext = 'explore' | 'installed' | 'premium' | 'private' | 'requested';
 
 const AppsPageContent = (): ReactElement => {
-	const { t } = useTranslation();
-	const { marketplaceApps, installedApps, privateApps, reload } = useAppsResult();
-	const [text, setText] = useState('');
+        const { t } = useTranslation();
+        const { marketplaceApps, installedApps, privateApps, reload, marketplaceHealth } = useAppsResult();
+        const [text, setText] = useState('');
 	const debouncedText = useDebouncedValue(text, 500);
 	const { current, itemsPerPage, setItemsPerPage: onSetItemsPerPage, setCurrent: onSetCurrent, ...paginationProps } = usePagination();
 
-	const router = useRouter();
+        const router = useRouter();
+        const canInstallFromFile = usePermission('manage-apps');
 
 	const context = useRouteParameter('context') as AppsContext;
 
@@ -165,15 +167,25 @@ const AppsPageContent = (): ReactElement => {
 		sortFilterStructure.items.find((item) => item.checked)?.id !== 'mru' ||
 		selectedCategories.length > 0;
 
-	const handleReturn = () => {
-		router.navigate({
-			name: 'marketplace',
-			params: {
-				context: 'explore',
-				page: 'list',
-			},
-		});
-	};
+        const handleReturn = () => {
+                router.navigate({
+                        name: 'marketplace',
+                        params: {
+                                context: 'explore',
+                                page: 'list',
+                        },
+                });
+        };
+
+        const handleInstallFromFile = useCallback(() => {
+                router.navigate({
+                        name: 'marketplace',
+                        params: {
+                                context: 'private',
+                                page: 'install',
+                        },
+                });
+        }, [router]);
 
 	const toggleInitialSortOption = useCallback((isRequested: boolean) => {
 		setSortFilterStructure((prevState) => {
@@ -227,9 +239,23 @@ const AppsPageContent = (): ReactElement => {
 		}
 	};
 
-	return (
-		<>
-			<MarketplaceHeader unsupportedVersion={unsupportedVersion} title={t(`Apps_context_${context}`)} />
+        const registryUnavailable = marketplaceHealth?.ok === false;
+        const registryMessage = marketplaceHealth?.error || t('Registry_unavailable', { defaultValue: 'Registry недоступен' });
+
+        return (
+                <>
+                        <MarketplaceHeader unsupportedVersion={unsupportedVersion} title={t(`Apps_context_${context}`)} />
+                        {registryUnavailable && (
+                                <Box pi={24} pb={12} color='font-secondary-info'>
+                                        <Callout type='warning' title={registryMessage} mbs={12}>
+                                                {canInstallFromFile && (
+                                                        <Button small primary onClick={handleInstallFromFile} mie={12}>
+                                                                {t('App_Url_to_Install_From_File')}
+                                                        </Button>
+                                                )}
+                                        </Callout>
+                                </Box>
+                        )}
 			<AppsFilters
 				text={text}
 				setText={setText}

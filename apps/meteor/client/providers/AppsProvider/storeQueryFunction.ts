@@ -2,6 +2,8 @@ import { type UseQueryResult } from '@tanstack/react-query';
 
 import type { App } from '../../views/marketplace/types';
 
+type MarketplaceHealth = { ok: boolean; error?: string };
+
 const sortByName = (apps: App[]): App[] => apps.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1));
 
 /**
@@ -10,19 +12,19 @@ const sortByName = (apps: App[]): App[] => apps.sort((a, b) => (a.name.toLowerCa
  * Exporting for better testing
  */
 export function storeQueryFunction(
-	marketplace: UseQueryResult<App[], unknown>,
-	instance: UseQueryResult<App[], unknown>,
-): [App[], App[], App[]] {
+        marketplace: UseQueryResult<{ apps: App[]; health?: MarketplaceHealth }, unknown>,
+        instance: UseQueryResult<App[], unknown>,
+): [App[], App[], App[], MarketplaceHealth | undefined] {
 	if (!marketplace.isFetched && !instance.isFetched) {
 		throw new Error('Apps not loaded');
 	}
 
-	const marketplaceApps: App[] = [];
-	const installedApps: App[] = [];
-	const privateApps: App[] = [];
-	const clonedData = [...(instance.data || [])];
+        const marketplaceApps: App[] = [];
+        const installedApps: App[] = [];
+        const privateApps: App[] = [];
+        const clonedData = [...(instance.data || [])];
 
-	sortByName(marketplace.data || []).forEach((app) => {
+        sortByName(marketplace.data?.apps || []).forEach((app) => {
 		const appIndex = clonedData.findIndex(({ id }) => id === app.id);
 		const [installedApp] = appIndex > -1 ? clonedData.splice(appIndex, 1) : [];
 
@@ -62,5 +64,5 @@ export function storeQueryFunction(
 		installedApps.push(app);
 	});
 
-	return [marketplaceApps, installedApps, privateApps];
+        return [marketplaceApps, installedApps, privateApps, marketplace.data?.health];
 }

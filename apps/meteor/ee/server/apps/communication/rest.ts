@@ -37,7 +37,12 @@ import { formatAppInstanceForRest } from '../../../lib/misc/formatAppInstanceFor
 import { notifyMarketplace } from '../marketplace/appInstall';
 import { fetchMarketplaceApps } from '../marketplace/fetchMarketplaceApps';
 import { fetchMarketplaceCategories } from '../marketplace/fetchMarketplaceCategories';
-import { MarketplaceAppsError, MarketplaceConnectionError, MarketplaceUnsupportedVersionError } from '../marketplace/marketplaceErrors';
+import {
+        MarketplaceAppsError,
+        MarketplaceConnectionError,
+        MarketplaceUnavailableError,
+        MarketplaceUnsupportedVersionError,
+} from '../marketplace/marketplaceErrors';
 import type { AppServerOrchestrator } from '../orchestrator';
 import { Apps } from '../orchestrator';
 
@@ -132,17 +137,24 @@ export class AppsRestApi {
 		);
 
 		this.api.addRoute(
-			'marketplace',
-			{ authRequired: true },
-			{
-				async get() {
-					try {
-						const apps = await fetchMarketplaceApps({ ...(this.queryParams.isAdminUser === 'false' && { endUserID: this.user._id }) });
-						return API.v1.success(apps);
-					} catch (err) {
-						if (err instanceof MarketplaceConnectionError) {
-							return handleError('Unable to access Marketplace. Does the server has access to the internet?', err);
-						}
+                                'marketplace',
+                        { authRequired: true },
+                        {
+                                async get() {
+                                        const marketplaceClient = orchestrator.getMarketplaceClient();
+                                        const healthStatus = await marketplaceClient.health();
+
+                                        if (!healthStatus.ok) {
+                                                return API.v1.success({ apps: [], health: healthStatus });
+                                        }
+
+                                        try {
+                                                const apps = await fetchMarketplaceApps({ ...(this.queryParams.isAdminUser === 'false' && { endUserID: this.user._id }) });
+                                                return API.v1.success({ apps, health: { ok: true } });
+                                        } catch (err) {
+                                                if (err instanceof MarketplaceUnavailableError || err instanceof MarketplaceConnectionError) {
+                                                        return API.v1.success({ apps: [], health: { ok: false, error: err.message } });
+                                                }
 
 						if (err instanceof MarketplaceAppsError || err instanceof MarketplaceUnsupportedVersionError) {
 							return API.v1.failure({ error: err.message });
@@ -160,18 +172,24 @@ export class AppsRestApi {
 		);
 
 		this.api.addRoute(
-			'categories',
-			{ authRequired: true },
-			{
-				async get() {
-					try {
-						const categories = await fetchMarketplaceCategories();
-						return API.v1.success(categories);
-					} catch (err) {
-						orchestrator.getRocketChatLogger().error('Error getting the categories from the Marketplace:', err);
-						if (err instanceof MarketplaceConnectionError) {
-							return handleError('Unable to access Marketplace. Does the server has access to the internet?', err);
-						}
+                                'categories',
+                        { authRequired: true },
+                        {
+                                async get() {
+                                        const healthStatus = await orchestrator.getMarketplaceClient().health();
+
+                                        if (!healthStatus.ok) {
+                                                return API.v1.success([]);
+                                        }
+
+                                        try {
+                                                const categories = await fetchMarketplaceCategories();
+                                                return API.v1.success(categories);
+                                        } catch (err) {
+                                                orchestrator.getRocketChatLogger().error('Error getting the categories from the Marketplace:', err);
+                                                if (err instanceof MarketplaceUnavailableError || err instanceof MarketplaceConnectionError) {
+                                                        return API.v1.success([]);
+                                                }
 
 						if (err instanceof MarketplaceAppsError || err instanceof MarketplaceUnsupportedVersionError) {
 							return API.v1.failure({ error: err.message });
@@ -261,10 +279,10 @@ export class AppsRestApi {
 						try {
 							const apps = await fetchMarketplaceApps();
 							return API.v1.success(apps);
-						} catch (e) {
-							if (e instanceof MarketplaceConnectionError) {
-								return handleError('Unable to access Marketplace. Does the server has access to the internet?', e);
-							}
+                                                } catch (e) {
+                                                        if (e instanceof MarketplaceUnavailableError || e instanceof MarketplaceConnectionError) {
+                                                                return API.v1.success([]);
+                                                        }
 
 							if (e instanceof MarketplaceAppsError || e instanceof MarketplaceUnsupportedVersionError) {
 								return API.v1.failure({ error: e.message });
@@ -284,11 +302,11 @@ export class AppsRestApi {
 						try {
 							const categories = await fetchMarketplaceCategories();
 							return API.v1.success(categories);
-						} catch (err) {
-							orchestrator.getRocketChatLogger().error('Error getting the categories from the Marketplace:', err);
-							if (err instanceof MarketplaceConnectionError) {
-								return handleError('Unable to access Marketplace. Does the server has access to the internet?', err);
-							}
+                                                } catch (err) {
+                                                        orchestrator.getRocketChatLogger().error('Error getting the categories from the Marketplace:', err);
+                                                        if (err instanceof MarketplaceUnavailableError || err instanceof MarketplaceConnectionError) {
+                                                                return API.v1.success([]);
+                                                        }
 
 							if (err instanceof MarketplaceAppsError || err instanceof MarketplaceUnsupportedVersionError) {
 								return API.v1.failure({ error: err.message });
@@ -640,24 +658,34 @@ export class AppsRestApi {
 			'featured-apps',
 			{ authRequired: true },
 			{
-				async get() {
-					const headers = getDefaultHeaders();
-					const token = await getWorkspaceAccessToken();
-					if (token) {
-						headers.Authorization = `Bearer ${token}`;
-					}
+                                async get() {
+                                        const headers = getDefaultHeaders();
+                                        const token = await getWorkspaceAccessToken();
+                                        if (token) {
+                                                headers.Authorization = `Bearer ${token}`;
+                                        }
 
-					let result;
-					try {
-						const request = await orchestrator.getMarketplaceClient().fetch(`v1/featured-apps`, { headers });
-						if (request.status !== 200) {
-							orchestrator.getRocketChatLogger().error('Error getting the Featured Apps from the Marketplace:', await request.json());
-							return API.v1.failure();
-						}
-						result = await request.json();
-					} catch (e) {
-						return handleError('Unable to access Marketplace. Does the server has access to the internet?', e);
-					}
+                                        const healthStatus = await orchestrator.getMarketplaceClient().health();
+
+                                        if (!healthStatus.ok) {
+                                                return API.v1.success({ sections: [] });
+                                        }
+
+                                        let result;
+                                        try {
+                                                const request = await orchestrator.getMarketplaceClient().fetch(`v1/featured-apps`, { headers });
+                                                if (request.status !== 200) {
+                                                        orchestrator.getRocketChatLogger().error('Error getting the Featured Apps from the Marketplace:', await request.json());
+                                                        return API.v1.failure();
+                                                }
+                                                result = await request.json();
+                                        } catch (e) {
+                                                if (e instanceof MarketplaceUnavailableError || e instanceof MarketplaceConnectionError) {
+                                                        return API.v1.success({ sections: [] });
+                                                }
+
+                                                return handleError('Unable to access Marketplace. Does the server has access to the internet?', e);
+                                        }
 
 					return API.v1.success(result);
 				},
