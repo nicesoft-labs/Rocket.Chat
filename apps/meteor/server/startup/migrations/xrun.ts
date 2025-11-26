@@ -4,7 +4,6 @@ import type { UpdateResult } from 'mongodb';
 import { upsertPermissions } from '../../../app/authorization/server/functions/upsertPermissions';
 import { settings } from '../../../app/settings/server';
 import { migrateDatabase, onServerVersionChange } from '../../lib/migrations';
-import { ensureCloudWorkspaceRegistered } from '../cloudRegistration';
 
 const { MIGRATION_VERSION = 'latest' } = process.env;
 
@@ -60,7 +59,6 @@ export const performMigrationProcedure = async (): Promise<void> => {
 	// perform operations when the server is starting with a different version
 	await onServerVersionChange(async () => {
 		await upsertPermissions();
-		await ensureCloudWorkspaceRegistered();
 		await moveRetentionSetting();
 	});
 };
