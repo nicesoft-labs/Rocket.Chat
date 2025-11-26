@@ -1,7 +1,7 @@
 import type { IWorkspaceInfo } from '@rocket.chat/core-typings';
 import { Box, Card, CardBody, CardCol, CardControls, CardHeader, CardTitle, Icon } from '@rocket.chat/fuselage';
 import { useBreakpoints } from '@rocket.chat/fuselage-hooks';
-import type { SupportedVersions } from '@rocket.chat/server-cloud-communication';
+import type { SupportedVersions } from '@rocket.chat/nicesoft-cloud/communication';
 import { ExternalLink } from '@rocket.chat/ui-client';
 import type { LocationPathname } from '@rocket.chat/ui-contexts';
 import { useSetModal, useMediaUrl } from '@rocket.chat/ui-contexts';

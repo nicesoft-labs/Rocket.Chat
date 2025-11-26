@@ -1,4 +1,4 @@
-import type { SignedSupportedVersions } from '@rocket.chat/server-cloud-communication';
+import type { SignedSupportedVersions } from '@rocket.chat/nicesoft-cloud/communication';
 
 import { supportedVersionsChooseLatest } from './supportedVersionsChooseLatest';
 

@@ -1,4 +1,4 @@
-import type { SupportedVersions } from '@rocket.chat/server-cloud-communication';
+import type { SupportedVersions } from '@rocket.chat/nicesoft-cloud/communication';
 import semver from 'semver';
 
 import type { VersionStatus } from './components/VersionTag';

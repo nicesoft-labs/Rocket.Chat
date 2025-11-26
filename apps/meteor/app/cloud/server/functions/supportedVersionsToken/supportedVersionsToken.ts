@@ -1,7 +1,7 @@
 import type { SettingValue } from '@rocket.chat/core-typings';
 import { License } from '@rocket.chat/nicesoft-license';
 import { Settings } from '@rocket.chat/models';
-import type { SignedSupportedVersions, SupportedVersions } from '@rocket.chat/server-cloud-communication';
+import type { SignedSupportedVersions, SupportedVersions } from '@rocket.chat/nicesoft-cloud/communication';
 import type { Response } from '@rocket.chat/server-fetch';
 import { serverFetch as fetch } from '@rocket.chat/server-fetch';
 
