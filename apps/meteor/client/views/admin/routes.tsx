@@ -96,14 +96,18 @@ declare module '@rocket.chat/ui-contexts' {
 			pathname: `/admin/moderation${`/${string}` | ''}${`/${string}` | ''}${`/${string}` | ''}`;
 			pattern: '/admin/moderation/:tab?/:context?/:id?';
 		};
-		'subscription': {
-			pathname: `/admin/subscription`;
-			pattern: '/admin/subscription';
-		};
-		'admin-feature-preview': {
-			pathname: '/admin/feature-preview';
-			pattern: '/admin/feature-preview';
-		};
+'subscription': {
+pathname: `/admin/subscription`;
+pattern: '/admin/subscription';
+};
+'nicechat-cloud': {
+pathname: '/admin/nicechat-cloud';
+pattern: '/admin/nicechat-cloud';
+};
+'admin-feature-preview': {
+pathname: '/admin/feature-preview';
+pattern: '/admin/feature-preview';
+};
 	}
 }
 
@@ -229,11 +233,16 @@ registerAdminRoute('/device-management/:context?/:id?', {
 });
 
 registerAdminRoute('/subscription', {
-	name: 'subscription',
-	component: lazy(() => import('./subscription/SubscriptionRoute')),
+name: 'subscription',
+component: lazy(() => import('./subscription/SubscriptionRoute')),
+});
+
+registerAdminRoute('/nicechat-cloud', {
+name: 'nicechat-cloud',
+component: lazy(() => import('./nicechatCloud/NicechatCloudRoute')),
 });
 
 registerAdminRoute('/feature-preview', {
-	name: 'admin-feature-preview',
-	component: lazy(() => import('./featurePreview/AdminFeaturePreviewRoute')),
+name: 'admin-feature-preview',
+component: lazy(() => import('./featurePreview/AdminFeaturePreviewRoute')),
 });
