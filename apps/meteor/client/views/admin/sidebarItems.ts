@@ -25,7 +25,7 @@ permissionGranted: (): boolean => hasPermission('manage-cloud'),
 href: '/admin/nicechat-cloud',
 i18nLabel: 'NiceChatCloud_Title',
 icon: 'cloud',
-permissionGranted: (): boolean => hasPermission('manage-cloud'),
+permissionGranted: (): boolean => hasPermission('view-nicechat-cloud'),
 },
 {
 href: '/admin/engagement/users',
